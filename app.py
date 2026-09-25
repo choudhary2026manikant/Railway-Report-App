@@ -384,7 +384,12 @@ def create_pdf(station_name, insp_type, pairs_list):
         os.remove(path_b)
         os.remove(path_a)
         
-    return pdf.output()
+    raw_output = pdf.output()
+    if isinstance(raw_output, str):
+        return raw_output.encode('latin1')
+    elif isinstance(raw_output, bytearray):
+        return bytes(raw_output)
+    return raw_output
 
 # ==================== APP MODE 1: INSPECTION REPORT ====================
 if app_mode == "🔍 Master Field Inspection & Evidence":
