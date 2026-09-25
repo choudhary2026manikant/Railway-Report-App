@@ -19,6 +19,7 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             station TEXT,
             inspection_date TEXT,
+            data_blob TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
@@ -37,6 +38,7 @@ def save_inspection_to_db(station, date_str):
 def get_all_inspections():
     conn = sqlite3.connect('railway_history.db', check_same_thread=False)
     cursor = conn.cursor()
+    # 30 din ya purani entries hatane ke liye (Cleanup old than 30 days optionally, ya sabhi dikhane ke liye)
     cursor.execute("SELECT id, station, inspection_date, created_at FROM inspections ORDER BY id DESC")
     rows = cursor.fetchall()
     conn.close()
@@ -173,7 +175,7 @@ def create_ppt(station_name, pairs_list):
     title_slide.shapes.title.text_frame.paragraphs[0].font.color.rgb = RGBColor(0, 51, 153)
     
     subtitle = title_slide.placeholders[1]
-    subtitle.text = "Prepared by the Sr. DCM Office (Cleanliness Section) / Solapur\nCentral Railway"
+    subtitle.text = "Solapur Division, Central Railway\nChief Commercial Inspector"
     subtitle.text_frame.paragraphs[0].font.color.rgb = RGBColor(102, 102, 102)
 
     for data in pairs_list:
@@ -452,6 +454,7 @@ if app_mode == "📸 New Inspection Report":
                                 'location': loc_name
                             })
                         
+                        # Save inspection info in database
                         save_inspection_to_db(station_input, datetime.now().strftime("%Y-%m-%d %H:%M"))
                         
                         st.session_state['ppt_data'] = create_ppt(station_input, pairs_list)
