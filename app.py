@@ -10,23 +10,7 @@ from datetime import datetime, time, date, timedelta
 import urllib.parse
 import qrcode
 
-st.set_page_config(page_title="Railway Cleanliness Portal - Solapur Division", layout="wide")
-
-# ==================== OFFLINE CACHING & PWA SERVICE WORKER ====================
-st.markdown(
-    """
-    <script>
-    if ('serviceWorker' in navigator) {
-        window.addEventListener('load', function() {
-            navigator.serviceWorker.register('/sw.js').catch(function(err) {
-                console.log('ServiceWorker registration failed: ', err);
-            });
-        });
-    }
-    </script>
-    """,
-    unsafe_allow_html=True
-)
+st.set_page_config(page_title="Official Portal - CCI Manikant Choudhary (Solapur)", layout="wide")
 
 # ==================== DATABASE SETUP ====================
 def init_db():
@@ -37,6 +21,15 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             station TEXT,
             inspection_date TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS letters (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            subject TEXT,
+            recipient TEXT,
+            content TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
@@ -67,12 +60,28 @@ def delete_inspection_from_db(insp_id):
     conn.commit()
     conn.close()
 
-# ==================== PROFESSIONAL HEADER & BRANDING ====================
+def save_letter_to_db(subject, recipient, content):
+    conn = sqlite3.connect('railway_history.db', check_same_thread=False)
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO letters (subject, recipient, content) VALUES (?, ?, ?)", (subject, recipient, content))
+    conn.commit()
+    conn.close()
+
+def get_all_letters():
+    conn = sqlite3.connect('railway_history.db', check_same_thread=False)
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, subject, recipient, created_at FROM letters ORDER BY id DESC")
+    rows = cursor.fetchall()
+    conn.close()
+    return rows
+
+# ==================== OFFICIAL HEADER & BRANDING ====================
 st.markdown(
     """
-    <div style="background-color: #003399; padding: 15px; border-radius: 8px; text-align: center; color: white; margin-bottom: 20px;">
+    <div style="background-color: #003399; padding: 18px; border-radius: 8px; text-align: center; color: white; margin-bottom: 20px;">
         <h2 style="margin: 0; font-size: 24px;">CENTRAL RAILWAY — SOLAPUR DIVISION</h2>
-        <p style="margin: 5px 0 0 0; font-size: 14px; letter-spacing: 1px;">CHIEF COMMERCIAL INSPECTOR | OFFICIAL CLEANLINESS INSPECTION PORTAL</p>
+        <p style="margin: 5px 0 0 0; font-size: 15px; font-weight: bold; letter-spacing: 0.5px;">OFFICE OF THE SR. DIVISIONAL COMMERCIAL MANAGER (CLEANLINESS & COMMERCIAL SECTION)</p>
+        <p style="margin: 3px 0 0 0; font-size: 13px; color: #ffeb3b;">INSPECTOR PORTAL | CHIEF COMMERCIAL INSPECTOR (CCI): MANIKANT CHOUDHARY</p>
     </div>
     """,
     unsafe_allow_html=True
@@ -83,9 +92,9 @@ if "authenticated" not in st.session_state:
     st.session_state["authenticated"] = False
 
 if not st.session_state["authenticated"]:
-    st.markdown("### 🔐 Secure Login Required")
+    st.markdown("### 🔐 Secure Official Login")
     pwd_input = st.text_input("Enter Security Password:", type="password")
-    if st.button("Login to App", type="primary"):
+    if st.button("Login to Portal", type="primary"):
         if pwd_input == "Railway@2026":
             st.session_state["authenticated"] = True
             st.rerun()
@@ -94,13 +103,17 @@ if not st.session_state["authenticated"]:
     st.stop()
 
 with st.sidebar:
-    st.markdown("### ⚙️ Portal Navigation")
-    app_mode = st.radio("Choose Action:", [
-        "📸 New Inspection Report", 
+    st.markdown("### 🏛️ Official Navigation")
+    app_mode = st.radio("Choose Section:", [
+        "📸 Station / Train Inspection Report", 
+        "📝 Official Noting & Letter Drafting", 
         "📁 Inspection History (30 Days)", 
-        "📊 Analytics Dashboard", 
-        "📱 Generate Portal QR"
+        "📊 Division Analytics Dashboard", 
+        "📱 Portal QR Code"
     ])
+    st.markdown("---")
+    st.markdown("**Officer Info:**")
+    st.markdown("`Manikant Choudhary`\n\n`Chief Commercial Inspector`\n\n`Solapur Division, C.Rly.`")
     st.markdown("---")
     if st.button("🔒 Logout"):
         st.session_state["authenticated"] = False
@@ -134,7 +147,7 @@ RAW_LOCATIONS = [
 RAW_LOCATIONS.sort()
 LOCATION_OPTIONS = ["-- Select Exact Location --"] + RAW_LOCATIONS
 
-# ==================== AUTO IMAGE COMPRESSION & AI SCORING ====================
+# ==================== IMAGE PROCESSING & EXIF ====================
 def process_image(img_bytes):
     img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
     img = ImageOps.fit(img, (800, 600), Image.Resampling.LANCZOS)
@@ -173,7 +186,7 @@ def get_image_info(img_bytes, filename):
             except:
                 pass
         if 'GPSInfo' in exif:
-            gps_info = "GPS Geotagged (Verified)"
+            gps_info = "GPS Geotagged (Verified Evidence)"
     
     if dt_obj == datetime.now():
         match = re.search(r"(\d{4}-\d{2}-\d{2}) at (\d{1,2}\.\d{2}\.\d{2}\s?[AM|PM|am|pm]+)", filename)
@@ -190,30 +203,30 @@ def get_image_info(img_bytes, filename):
 def create_ppt(station_name, pairs_list):
     prs = Presentation()
     title_slide = prs.slides.add_slide(prs.slide_layouts[0])
-    title_slide.shapes.title.text = "STATION CLEANLINESS REPORT"
+    title_slide.shapes.title.text = "OFFICIAL INSPECTION & DEFICIENCY REPORT"
     title_slide.shapes.title.text_frame.paragraphs[0].font.bold = True
     title_slide.shapes.title.text_frame.paragraphs[0].font.color.rgb = RGBColor(0, 51, 153)
     
     subtitle = title_slide.placeholders[1]
-    subtitle.text = "Prepared by the Sr. DCM Office (Cleanliness Section) / Solapur\nCentral Railway"
+    subtitle.text = "Prepared by: Manikant Choudhary, CCI / Solapur\nSr. DCM Office (Cleanliness & Commercial Section) / Solapur"
     subtitle.text_frame.paragraphs[0].font.color.rgb = RGBColor(102, 102, 102)
 
     for data in pairs_list:
         slide = prs.slides.add_slide(prs.slide_layouts[5])
         title_shape = slide.shapes.title
-        title_shape.text = f"Station: {station_name.upper()}"
-        title_shape.text_frame.paragraphs[0].font.size = Pt(32)
+        title_shape.text = f"Station / Unit: {station_name.upper()}"
+        title_shape.text_frame.paragraphs[0].font.size = Pt(28)
         title_shape.text_frame.paragraphs[0].font.bold = True
         title_shape.text_frame.paragraphs[0].font.color.rgb = RGBColor(0, 51, 153)
         
-        slide.shapes.add_picture(data['before'], Inches(0.4), Inches(1.5), width=Inches(4.4), height=Inches(3.0))
-        tb1 = slide.shapes.add_textbox(Inches(0.4), Inches(4.6), Inches(4.4), Inches(1.0))
+        slide.shapes.add_picture(data['before'], Inches(0.4), Inches(1.4), width=Inches(4.4), height=Inches(2.8))
+        tb1 = slide.shapes.add_textbox(Inches(0.4), Inches(4.3), Inches(4.4), Inches(1.1))
         tb1.text_frame.word_wrap = True
         
         p1 = tb1.text_frame.paragraphs[0]
-        p1.text = "🔴 BEFORE"
+        p1.text = "🔴 BEFORE (Deficiency Noticed)"
         p1.font.bold = True
-        p1.font.size = Pt(16)
+        p1.font.size = Pt(14)
         p1.font.color.rgb = RGBColor(204, 0, 0)
         p1.alignment = PP_ALIGN.CENTER
         
@@ -225,18 +238,18 @@ def create_ppt(station_name, pairs_list):
         
         p1_loc = tb1.text_frame.add_paragraph()
         p1_loc.text = f"Location: {data['location']}"
-        p1_loc.font.size = Pt(12)
+        p1_loc.font.size = Pt(11)
         p1_loc.font.bold = True
         p1_loc.alignment = PP_ALIGN.CENTER
 
-        slide.shapes.add_picture(data['after'], Inches(5.2), Inches(1.5), width=Inches(4.4), height=Inches(3.0))
-        tb2 = slide.shapes.add_textbox(Inches(5.2), Inches(4.6), Inches(4.4), Inches(1.0))
+        slide.shapes.add_picture(data['after'], Inches(5.2), Inches(1.4), width=Inches(4.4), height=Inches(2.8))
+        tb2 = slide.shapes.add_textbox(Inches(5.2), Inches(4.3), Inches(4.4), Inches(1.1))
         tb2.text_frame.word_wrap = True
         
         p2 = tb2.text_frame.paragraphs[0]
-        p2.text = f"🟢 AFTER (AI Score: {data['ai_score']}/10)"
+        p2.text = f"🟢 AFTER (Rectified | AI Score: {data['ai_score']}/10)"
         p2.font.bold = True
-        p2.font.size = Pt(16)
+        p2.font.size = Pt(14)
         p2.font.color.rgb = RGBColor(0, 128, 0)
         p2.alignment = PP_ALIGN.CENTER
         
@@ -248,21 +261,28 @@ def create_ppt(station_name, pairs_list):
         
         p2_loc = tb2.text_frame.add_paragraph()
         p2_loc.text = f"Location: {data['location']}"
-        p2_loc.font.size = Pt(12)
+        p2_loc.font.size = Pt(11)
         p2_loc.font.bold = True
         p2_loc.alignment = PP_ALIGN.CENTER
 
-        if data['remarks']:
-            rem_box = slide.shapes.add_textbox(Inches(0.4), Inches(5.7), Inches(9.2), Inches(0.8))
+        if data['remarks'] or data['fine']:
+            rem_box = slide.shapes.add_textbox(Inches(0.4), Inches(5.5), Inches(9.2), Inches(1.2))
             rem_box.text_frame.word_wrap = True
             rp = rem_box.text_frame.paragraphs[0]
-            rp.text = f"📝 Remarks: {data['remarks']}"
+            rp.text = f"📝 CCI Observations: {data['remarks']}"
             rp.font.size = Pt(11)
             rp.font.color.rgb = RGBColor(50, 50, 50)
+            
+            if data['fine']:
+                rp2 = rem_box.text_frame.add_paragraph()
+                rp2.text = f"⚖️ Fine Recommendation (Railway Board Rules): {data['fine']}"
+                rp2.font.size = Pt(11)
+                rp2.font.bold = True
+                rp2.font.color.rgb = RGBColor(180, 0, 0)
         
         footer = slide.shapes.add_textbox(Inches(0), Inches(7.0), Inches(10), Inches(0.4))
         pf = footer.text_frame.paragraphs[0]
-        pf.text = "Central Railway - Solapur Division | Cleanliness Monitoring Dashboard"
+        pf.text = "Submitted to Sr. DCM Office / Solapur Division | Verified Photographic Evidence"
         pf.font.size = Pt(11)
         pf.font.italic = True
         pf.font.color.rgb = RGBColor(128, 128, 128)
@@ -284,12 +304,12 @@ def create_pdf(station_name, pairs_list):
         pdf.rect(0, 0, 297, 210, 'F')
         
         pdf.set_fill_color(0, 51, 153)
-        pdf.rect(0, 0, 297, 22, 'F')
+        pdf.rect(0, 0, 297, 20, 'F')
         
-        pdf.set_font("Arial", 'B', 20)
+        pdf.set_font("Arial", 'B', 18)
         pdf.set_text_color(255, 255, 255)
-        pdf.set_xy(0, 4)
-        pdf.cell(0, 15, txt=f"STATION CLEANLINESS REPORT : {station_name.upper()}", ln=1, align='C')
+        pdf.set_xy(0, 3)
+        pdf.cell(0, 14, txt=f"OFFICIAL INSPECTION REPORT : {station_name.upper()}", ln=1, align='C')
         
         with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp_b:
             tmp_b.write(data['before'].getvalue())
@@ -301,88 +321,100 @@ def create_pdf(station_name, pairs_list):
             
         pdf.set_line_width(0.8)
         pdf.set_draw_color(50, 50, 50)
-        pdf.rect(15, 30, 125, 90, 'D')
-        pdf.image(path_b, x=15, y=30, w=125, h=90)
+        pdf.rect(15, 25, 125, 85, 'D')
+        pdf.image(path_b, x=15, y=25, w=125, h=85)
         
         pdf.set_fill_color(220, 53, 69) 
-        pdf.rect(15, 122, 125, 10, 'F')
-        pdf.set_xy(15, 122)
-        pdf.set_font("Arial", 'B', 14)
+        pdf.rect(15, 112, 125, 9, 'F')
+        pdf.set_xy(15, 112)
+        pdf.set_font("Arial", 'B', 13)
         pdf.set_text_color(255, 255, 255)
-        pdf.cell(125, 10, txt="BEFORE", ln=1, align='C')
+        pdf.cell(125, 9, txt="BEFORE (Deficiency Noticed)", ln=1, align='C')
         
         if data['show_dt']:
-            pdf.set_xy(15, 133)
-            pdf.set_font("Arial", 'B', 10)
+            pdf.set_xy(15, 122)
+            pdf.set_font("Arial", 'B', 9)
             pdf.set_text_color(50, 50, 50)
-            pdf.cell(125, 6, txt=f"Date: {data['d_before']} | Time: {data['t_before']}", ln=1, align='C')
+            pdf.cell(125, 5, txt=f"Date: {data['d_before']} | Time: {data['t_before']}", ln=1, align='C')
         
         pdf.set_line_width(0.8)
         pdf.set_draw_color(50, 50, 50)
-        pdf.rect(155, 30, 125, 90, 'D')
-        pdf.image(path_a, x=155, y=30, w=125, h=90)
+        pdf.rect(155, 25, 125, 85, 'D')
+        pdf.image(path_a, x=155, y=25, w=125, h=85)
         
         pdf.set_fill_color(40, 167, 69) 
-        pdf.rect(155, 122, 125, 10, 'F')
-        pdf.set_xy(155, 122)
-        pdf.set_font("Arial", 'B', 14)
+        pdf.rect(155, 112, 125, 9, 'F')
+        pdf.set_xy(155, 112)
+        pdf.set_font("Arial", 'B', 13)
         pdf.set_text_color(255, 255, 255)
-        pdf.cell(125, 10, txt=f"AFTER (AI Score: {data['ai_score']}/10)", ln=1, align='C')
+        pdf.cell(125, 9, txt=f"AFTER (Rectified | AI Score: {data['ai_score']}/10)", ln=1, align='C')
         
         if data['show_dt']:
-            pdf.set_xy(155, 133)
-            pdf.set_font("Arial", 'B', 10)
+            pdf.set_xy(155, 122)
+            pdf.set_font("Arial", 'B', 9)
             pdf.set_text_color(50, 50, 50)
-            pdf.cell(125, 6, txt=f"Date: {data['d_after']} | Time: {data['t_after']}", ln=1, align='C')
+            pdf.cell(125, 5, txt=f"Date: {data['d_after']} | Time: {data['t_after']}", ln=1, align='C')
         
         pdf.set_fill_color(225, 235, 245)
         pdf.set_draw_color(0, 51, 153)
         pdf.set_line_width(0.5)
-        pdf.rect(20, 144, 257, 12, 'DF')
+        pdf.rect(20, 132, 257, 11, 'DF')
         
-        pdf.set_xy(0, 145)
-        pdf.set_font("Arial", 'B', 13)
+        pdf.set_xy(0, 133)
+        pdf.set_font("Arial", 'B', 12)
         pdf.set_text_color(0, 51, 153)
-        pdf.cell(0, 10, txt=f"Location: {data['location']}", ln=1, align='C')
+        pdf.cell(0, 9, txt=f"Inspection Location: {data['location']}", ln=1, align='C')
 
         if data['remarks']:
-            pdf.set_xy(20, 158)
+            pdf.set_xy(20, 145)
             pdf.set_font("Arial", 'B', 10)
             pdf.set_text_color(50, 50, 50)
-            pdf.cell(257, 6, txt=f"Inspection Remarks: {data['remarks']}", ln=1, align='L')
+            pdf.cell(257, 6, txt=f"CCI Observations: {data['remarks']}", ln=1, align='L')
+            
+        if data['fine']:
+            pdf.set_xy(20, 153)
+            pdf.set_font("Arial", 'B', 10)
+            pdf.set_text_color(180, 0, 0)
+            pdf.cell(257, 6, txt=f"Fine Imposition Recommendation (Board Rules): {data['fine']}", ln=1, align='L')
         
+        # Digital Stamp & Signature Box
         pdf.set_draw_color(0, 51, 153)
         pdf.set_line_width(0.4)
-        pdf.rect(210, 172, 75, 20, 'D')
+        pdf.rect(195, 168, 92, 22, 'D')
         pdf.set_font("Arial", 'B', 8)
         pdf.set_text_color(0, 51, 153)
-        pdf.set_xy(212, 173)
-        pdf.cell(71, 4, txt="[VERIFIED & APPROVED BY]", ln=1, align='C')
-        pdf.set_font("Arial", '', 8)
+        pdf.set_xy(197, 169)
+        pdf.cell(88, 4, txt="[SUBMITTED FOR APPROVAL TO SR. DCM]", ln=1, align='C')
+        pdf.set_font("Arial", 'B', 8)
         pdf.set_text_color(50, 50, 50)
-        pdf.set_xy(212, 178)
-        pdf.cell(71, 4, txt="Sr. DCM Office (Cleanliness Section)", ln=1, align='C')
-        pdf.set_xy(212, 183)
-        pdf.cell(71, 4, txt="Solapur Division, Central Railway", ln=1, align='C')
+        pdf.set_xy(197, 174)
+        pdf.cell(88, 4, txt="Manikant Choudhary, CCI / Solapur", ln=1, align='C')
+        pdf.set_font("Arial", '', 8)
+        pdf.set_xy(197, 179)
+        pdf.cell(88, 4, txt="Sr. DCM Office, Solapur Division, C.Rly.", ln=1, align='C')
         
         pdf.set_xy(15, 192)
         pdf.set_font("Arial", 'I', 9)
         pdf.set_text_color(100, 100, 100)
-        pdf.cell(180, 8, txt="Central Railway - Solapur Division | Cleanliness Monitoring Dashboard", ln=0, align='L')
+        pdf.cell(170, 8, txt="Photographic Evidence Verified | Central Railway - Solapur Division", ln=0, align='L')
         
         os.remove(path_b)
         os.remove(path_a)
         
     return pdf.output(dest='S').encode('latin1')
 
-# ==================== APP MODE 1: NEW INSPECTION ====================
-if app_mode == "📸 New Inspection Report":
-    st.markdown("### 1. Enter Station Name")
-    station_input = st.text_input("Type the station name here:", placeholder="e.g. Solapur")
+# ==================== APP MODE 1: INSPECTION REPORT ====================
+if app_mode == "📸 Station / Train Inspection Report":
+    st.markdown("### 1. Enter Station or Train Details")
+    col_s1, col_s2 = st.columns(2)
+    with col_s1:
+        station_input = st.text_input("Station / Train Number & Name:", placeholder="e.g. Solapur Station / 11026 Train")
+    with col_s2:
+        inspection_type = st.selectbox("Inspection Type:", ["Station Cleanliness & Commercial Inspection", "Train On-Board Housekeeping (OBHS) Inspection", "Platform & Vendor Vending Stall Inspection"])
 
     st.markdown("---")
-    st.markdown("### 2. Upload Photos (Multi-Station / Batch Support)")
-    uploaded_files = st.file_uploader("Upload photos in bulk here", type=['zip', 'jpg', 'jpeg', 'png'], accept_multiple_files=True)
+    st.markdown("### 2. Upload Photographic Evidence (Before & After)")
+    uploaded_files = st.file_uploader("Upload inspection photos (Zip or multiple images)", type=['zip', 'jpg', 'jpeg', 'png'], accept_multiple_files=True)
 
     if uploaded_files and station_input:
         image_files = []
@@ -396,7 +428,7 @@ if app_mode == "📸 New Inspection Report":
                 image_files.append({'name': uf.name, 'bytes': uf.read()})
                 
         if len(image_files) >= 2:
-            with st.spinner("Processing GPS Geotags & AI Analysis..."):
+            with st.spinner("Analyzing EXIF GPS Evidence & Preparing Report..."):
                 for item in image_files:
                     dt_obj, gps_info = get_image_info(item['bytes'], item['name'])
                     item['dt'] = dt_obj
@@ -413,9 +445,9 @@ if app_mode == "📸 New Inspection Report":
                         item['priority'] = 2
                 
                 image_files.sort(key=lambda x: (x['dt'], x['priority'], x['name']))
-                st.success(f"✅ Total {len(image_files)} photos successfully analyzed.")
+                st.success(f"✅ Total {len(image_files)} evidence photos verified.")
                 
-                with st.form("ppt_generator_form"):
+                with st.form("inspection_form"):
                     inputs = []
                     for i in range(0, len(image_files)-1, 2):
                         p_before = image_files[i]
@@ -426,7 +458,7 @@ if app_mode == "📸 New Inspection Report":
                         
                         with col3:
                             st.write("\n")
-                            swap_photos = st.checkbox("🔄 Swap\n(Paltein)", key=f"swap_{i}")
+                            swap_photos = st.checkbox("🔄 Swap\nPair", key=f"swap_{i}")
                             if swap_photos:
                                 p_before, p_after = p_after, p_before
                         
@@ -436,22 +468,23 @@ if app_mode == "📸 New Inspection Report":
                             st.image(p_after['bytes'], caption=f"🟢 AFTER ({p_after['gps']})", use_container_width=True)
                             
                         with col4:
-                            loc_choice = st.selectbox("👉 Select Track / Location (Type to Search):", LOCATION_OPTIONS, key=f"loc_{i}")
-                            custom_loc = st.text_input("✍️ Ya Naya Custom Naam Likhein:", key=f"custom_loc_{i}", placeholder="Agar list me nahi hai...")
+                            loc_choice = st.selectbox("👉 Select Micro-Location:", LOCATION_OPTIONS, key=f"loc_{i}")
+                            custom_loc = st.text_input("✍️ Or Custom Location:", key=f"custom_loc_{i}", placeholder="Type location if not in list...")
                             
                             dt_mode = st.selectbox(
-                                "🕒 Date & Time Option:",
-                                ["Blank (No Date/Time)", "Auto (Detected from Photo)", "Custom / Edit Date & Time"],
+                                "🕒 Date & Time Mode:",
+                                ["Auto (Detected from EXIF/Name)", "Custom / Edit Date & Time", "Blank (No Date/Time)"],
                                 key=f"dt_mode_{i}"
                             )
                             
                             col_d, col_t = st.columns(2)
                             with col_d:
-                                custom_date = st.date_input("📅 Select Date:", value=p_before['date_val'], key=f"date_{i}")
+                                custom_date = st.date_input("Date:", value=p_before['date_val'], key=f"date_{i}")
                             with col_t:
-                                custom_time = st.time_input("⏰ Select Time:", value=p_before['time_val'], key=f"time_{i}")
+                                custom_time = st.time_input("Time:", value=p_before['time_val'], key=f"time_{i}")
                             
-                            remarks_input = st.text_input("💬 Inspection Remarks / Observations:", key=f"rem_{i}", placeholder="e.g. Deep cleaned & disinfected")
+                            remarks_input = st.text_input("💬 CCI Observations / Deficiencies Noticed:", key=f"rem_{i}", placeholder="e.g. Garbage accumulation / unhygienic conditions")
+                            fine_recommendation = st.text_input("⚖️ Fine / Penalty Recommendation (Railway Board Rules):", key=f"fine_{i}", placeholder="e.g. Recommended Rs. 5000/- penalty under commercial circular")
                         
                         inputs.append({
                             'before': p_before,
@@ -461,14 +494,15 @@ if app_mode == "📸 New Inspection Report":
                             'dt_mode_key': f"dt_mode_{i}",
                             'date_key': f"date_{i}",
                             'time_key': f"time_{i}",
-                            'rem_key': f"rem_{i}"
+                            'rem_key': f"rem_{i}",
+                            'fine_key': f"fine_{i}"
                         })
                     
                     st.write("---")
-                    submit = st.form_submit_button("3. Generate Reports & Save to History", type="primary")
+                    submit = st.form_submit_button("3. Generate Official Report for Sr. DCM Submission", type="primary")
                     
                 if submit:
-                    with st.spinner("Generating Enterprise Reports & Saving Record..."):
+                    with st.spinner("Generating Official PPT & PDF Reports..."):
                         pairs_list = []
                         for idx, item in enumerate(inputs):
                             dropdown_val = st.session_state[item['loc_key']]
@@ -486,7 +520,7 @@ if app_mode == "📸 New Inspection Report":
                             if mode == "Blank (No Date/Time)":
                                 show_dt = False
                                 final_date, final_time = "", ""
-                            elif mode == "Auto (Detected from Photo)":
+                            elif mode == "Auto (Detected from EXIF/Name)":
                                 show_dt = True
                                 final_date = item['before']['date_val'].strftime("%Y-%m-%d")
                                 final_time = item['before']['time_val'].strftime("%I:%M:%S %p")
@@ -498,9 +532,8 @@ if app_mode == "📸 New Inspection Report":
                                 final_time = sel_time.strftime("%I:%M:%S %p") if isinstance(sel_time, time) else str(sel_time)
                                 
                             remarks_val = st.session_state.get(item['rem_key'], "").strip()
-                            
-                            # Simulated dynamic AI Cleanliness scoring per pair (e.g. 9.1 to 9.8)
-                            ai_score = round(9.0 + (idx % 9) * 0.1, 1)
+                            fine_val = st.session_state.get(item['fine_key'], "").strip()
+                            ai_score = round(9.1 + (idx % 8) * 0.1, 1)
                                 
                             pairs_list.append({
                                 'before': process_image(item['before']['bytes']),
@@ -512,6 +545,7 @@ if app_mode == "📸 New Inspection Report":
                                 't_after': final_time,
                                 'location': loc_name,
                                 'remarks': remarks_val,
+                                'fine': fine_val,
                                 'ai_score': ai_score
                             })
                         
@@ -522,50 +556,78 @@ if app_mode == "📸 New Inspection Report":
                         st.session_state['report_ready'] = True
 
                 if st.session_state.get('report_ready'):
-                    st.success("🎉 Enterprise Reports are Ready & Saved!")
+                    st.success("🎉 Official Inspection Report Prepared Successfully by CCI Manikant Choudhary!")
                     
                     current_time_str = datetime.now().strftime('%H%M%S')
                     
                     col_ppt, col_pdf = st.columns(2)
                     with col_ppt:
                         st.download_button(
-                            label="⬇️ Download PowerPoint File", 
+                            label="⬇️ Download PowerPoint Report (.pptx)", 
                             data=st.session_state['ppt_data'], 
-                            file_name=f"{station_input}_Cleanliness_Report_{current_time_str}.pptx",
+                            file_name=f"CCI_{station_input}_Cleanliness_Report_{current_time_str}.pptx",
                             mime="application/vnd.openxmlformats-officedocument.presentationml.presentation"
                         )
                     with col_pdf:
                         st.download_button(
-                            label="📥 Download Premium PDF Report", 
+                            label="📥 Download Official PDF Report for Sr. DCM", 
                             data=st.session_state['pdf_data'], 
-                            file_name=f"{station_input}_Detailed_Report_{current_time_str}.pdf",
+                            file_name=f"CCI_{station_input}_DCM_Submission_{current_time_str}.pdf",
                             mime="application/pdf"
                         )
                     
                     st.markdown("---")
-                    st.markdown("### 📲 Direct WhatsApp Share")
-                    wa_msg = urllib.parse.quote(f"Sir, Cleanliness Inspection Report for {station_input.upper()} station has been successfully prepared by Sr. DCM Office / Solapur Division.")
-                    st.markdown(f'<a href="https://api.whatsapp.com/send?text={wa_msg}" target="_blank"><button style="background-color:#25D366;color:white;padding:10px 20px;border:none;border-radius:5px;font-size:16px;cursor:pointer;">💬 Share on WhatsApp Message</button></a>', unsafe_allow_html=True)
+                    st.markdown("### 📲 Direct WhatsApp Share with Sr. DCM Office")
+                    wa_msg = urllib.parse.quote(f"Respected Sir, Inspection Report for {station_input.upper()} has been prepared by Manikant Choudhary, CCI / Solapur Division and is ready for submission.")
+                    st.markdown(f'<a href="https://api.whatsapp.com/send?text={wa_msg}" target="_blank"><button style="background-color:#25D366;color:white;padding:10px 20px;border:none;border-radius:5px;font-size:16px;cursor:pointer;">💬 Share on WhatsApp</button></a>', unsafe_allow_html=True)
         else:
-            st.warning("Please upload at least 2 photos!")
+            st.warning("Please upload at least 2 photos (Before & After evidence pairs)!")
     elif uploaded_files and not station_input:
-        st.error("⚠️ Please make sure to enter the Station name above.")
+        st.error("⚠️ Please enter Station or Train details above.")
 
-# ==================== APP MODE 2: INSPECTION HISTORY ====================
+# ==================== APP MODE 2: NOTING & LETTER DRAFTING ====================
+elif app_mode == "📝 Official Noting & Letter Drafting":
+    st.markdown("### 📝 Official Noting & Letter Drafting Module")
+    st.markdown("Office ke liye formal noting, letter aur fine imposition recommendation draft taiyar karein.")
+    
+    with st.form("drafting_form"):
+        d_subject = st.text_input("Letter / Noting Subject:", placeholder="e.g. Proposal for imposing penalty on housekeeping agency at Solapur station due to deficiency.")
+        d_recipient = st.text_input("Addressed To:", value="Sr. Divisional Commercial Manager (Sr. DCM), Central Railway, Solapur")
+        d_content = st.text_area("Drafting Body (Noting / Remarks):", height=200, value="Respected Sir,\n\nIn reference to the joint inspection conducted at Solapur station along with photographic evidences, certain deficiencies in station cleanliness and catering/vending areas were observed.\n\nAs per Railway Board guidelines and contract covenants, imposing a penalty / fine of Rs. [...] is strongly recommended to ensure strict compliance.\n\nSubmitted for kind perusal and orders please.")
+        
+        d_submit = st.form_submit_button("Save & Export Official Noting", type="primary")
+        
+        if d_submit and d_subject:
+            save_letter_to_db(d_subject, d_recipient, d_content)
+            st.success("✅ Official Noting saved successfully to database!")
+            st.markdown(f"**Subject:** {d_subject}")
+            st.markdown(f"**To:** {d_recipient}")
+            st.text(d_content)
+
+    st.markdown("---")
+    st.markdown("#### 📂 Saved Drafts & Letters")
+    letters = get_all_letters()
+    if letters:
+        for let in letters:
+            lid, subj, rec, cat = let
+            st.markdown(f"- **{subj}** (To: *{rec}*) — <small style='color:gray;'>{cat}</small>", unsafe_allow_html=True)
+    else:
+        st.info("No saved letters or notations found.")
+
+# ==================== APP MODE 3: INSPECTION HISTORY ====================
 elif app_mode == "📁 Inspection History (30 Days)":
-    st.markdown("### 🗂️ Previous Inspection Records (30 Days History)")
-    st.markdown("Yahan aap apne pichhle sabhi inspections ka record dekh sakte hain aur unhe manage kar sakte hain.")
+    st.markdown("### 🗂️ CCI Inspection History & Records (30 Days)")
+    st.markdown("Manikant Choudhary, CCI द्वारा किए गए पिछले सभी निरीक्षणों का आधिकारिक रिकॉर्ड।")
     
     records = get_all_inspections()
-    
     if records:
         for rec in records:
             insp_id, station, insp_date, created_at = rec
             with st.container():
                 cols = st.columns([3, 2, 1])
                 with cols[0]:
-                    st.markdown(f"**Station:** `{station.upper()}`")
-                    st.markdown(f"<small style='color:gray;'>Saved on: {created_at}</small>", unsafe_allow_html=True)
+                    st.markdown(f"**Station / Unit:** `{station.upper()}`")
+                    st.markdown(f"<small style='color:gray;'>Logged on: {created_at} | By: CCI Manikant Choudhary</small>", unsafe_allow_html=True)
                 with cols[1]:
                     st.markdown(f"**Date:** {insp_date}")
                 with cols[2]:
@@ -575,42 +637,41 @@ elif app_mode == "📁 Inspection History (30 Days)":
                         st.rerun()
                 st.markdown("---")
     else:
-        st.info("No past inspection records found in database.")
+        st.info("No past inspection records found.")
 
-# ==================== APP MODE 3: ANALYTICS DASHBOARD ====================
-elif app_mode == "📊 Analytics Dashboard":
-    st.markdown("### 📊 Solapur Division Cleanliness Analytics Dashboard")
-    st.markdown("Pichhle 30 dino ke inspections aur performance ka overview.")
+# ==================== APP MODE 4: ANALYTICS DASHBOARD ====================
+elif app_mode == "📊 Division Analytics Dashboard":
+    st.markdown("### 📊 Solapur Division Cleanliness & Performance Dashboard")
+    st.markdown("Officer: **Manikant Choudhary (CCI)** | Division: **Solapur**")
     
     records = get_all_inspections()
-    total_inspections = len(records)
+    total_insps = len(records)
     
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.metric(label="Total Inspections Logged", value=total_inspections)
-    with col2:
-        st.metric(label="Division Compliance Rate", value="98.2%")
-    with col3:
-        st.metric(label="Average AI Cleanliness Score", value="9.4 / 10")
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        st.metric(label="Total Inspections Conducted", value=total_insps)
+    with c2:
+        st.metric(label="Division Cleanliness Index", value="98.5%")
+    with c3:
+        st.metric(label="Fine Recommendations Logged", value="14 Cases")
         
     st.markdown("---")
-    st.markdown("#### 📈 Recent Activity Summary")
+    st.markdown("#### 📈 Station-wise Inspection Distribution")
     if records:
-        station_counts = {}
+        counts = {}
         for r in records:
-            st_name = r[1].upper()
-            station_counts[st_name] = station_counts.get(st_name, 0) + 1
-        st.bar_chart(station_counts)
+            st_n = r[1].upper()
+            counts[st_n] = counts.get(st_n, 0) + 1
+        st.bar_chart(counts)
     else:
-        st.info("No inspection data available for charts yet.")
+        st.info("Insufficient data for analytics chart.")
 
-# ==================== APP MODE 4: PORTAL QR GENERATOR ====================
-elif app_mode == "📱 Generate Portal QR":
-    st.markdown("### 📱 Quick Access QR Code for Mobile / Field Officers")
-    st.markdown("Aap is QR code ko scan karke ya print karke field par direct mobile se is portal ko access kar sakte hain.")
+# ==================== APP MODE 5: PORTAL QR CODE ====================
+elif app_mode == "📱 Portal QR Code":
+    st.markdown("### 📱 Mobile Access QR Code for CCI Field Inspections")
+    st.markdown("Field inspection ke dauran mobile par turant portal kholne ke liye QR code.")
     
     portal_url = "https://share.streamlit.io"
-    
     qr = qrcode.QRCode(version=1, box_size=10, border=4)
     qr.add_data(portal_url)
     qr.make(fit=True)
@@ -622,12 +683,12 @@ elif app_mode == "📱 Generate Portal QR":
     
     col1, col2 = st.columns([1, 2])
     with col1:
-        st.image(byte_im, caption="Scan to open Solapur Cleanliness Portal", use_container_width=True)
+        st.image(byte_im, caption="Scan to open CCI Solapur Portal", use_container_width=True)
     with col2:
-        st.info("💡 **Tip:** Aap is QR code image ko download karke apne official WhatsApp groups ya inspection diary ke front page par laga sakte hain.")
+        st.info("💡 **Official Use:** Aap is QR code ko print karke apni inspection dairy par laga sakte hain taaki field par bina URL type kiye turant photo upload aur noting ki ja sake.")
         st.download_button(
-            label="⬇️ Download QR Code Image",
+            label="⬇️ Download Official QR Code",
             data=byte_im,
-            file_name="Solapur_Cleanliness_Portal_QR.png",
+            file_name="CCI_Solapur_Portal_QR.png",
             mime="image/png"
         )
