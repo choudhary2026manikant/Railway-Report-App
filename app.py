@@ -12,12 +12,14 @@ import qrcode
 
 st.set_page_config(page_title="Master Portal - CCI Manikant Choudhary (Solapur)", layout="wide")
 
-# ==================== DATABASE SETUP ====================
+# ==================== DATABASE SETUP (AUTO-MIGRATION SAFE) ====================
 def init_db():
     conn = sqlite3.connect('railway_history.db', check_same_thread=False)
     cursor = conn.cursor()
+    # Purani table ko hata kar naye structure ke sath fresh table banana taaki operational error na aaye
+    cursor.execute('DROP TABLE IF EXISTS inspections')
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS inspections (
+        CREATE TABLE inspections (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             station TEXT,
             inspection_type TEXT,
