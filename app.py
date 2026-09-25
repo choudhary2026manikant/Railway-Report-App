@@ -36,7 +36,6 @@ if not st.session_state["authenticated"]:
             st.error("❌ Invalid Password! Please enter correct credentials.")
     st.stop()
 
-# Logout Option in Sidebar
 with st.sidebar:
     st.markdown("### ⚙️ Portal Controls")
     if st.button("🔒 Logout"):
@@ -147,8 +146,8 @@ def extract_whatsapp_datetime(filename):
     return None, None, None
 
 def get_image_info(img_bytes, filename):
-    date_str = "Date Not Found"
-    time_str = "Time Not Found"
+    date_str = datetime.now().strftime("%Y-%m-%d")
+    time_str = datetime.now().strftime("%I:%M:%S %p")
     dt_obj = datetime.max 
     
     exif_dt = get_exif_datetime(img_bytes)
@@ -375,19 +374,29 @@ if uploaded_files and station_input:
                             p_before, p_after = p_after, p_before
                     
                     with col1:
-                        st.image(p_before['bytes'], caption=f"🔴 BEFORE ({p_before['time_str']})", use_container_width=True)
+                        st.image(p_before['bytes'], caption=f"🔴 BEFORE", use_container_width=True)
                     with col2:
-                        st.image(p_after['bytes'], caption=f"🟢 AFTER ({p_after['time_str']})", use_container_width=True)
+                        st.image(p_after['bytes'], caption=f"🟢 AFTER", use_container_width=True)
                         
                     with col4:
                         loc_choice = st.selectbox("👉 Select Track / Location (Type to Search):", LOCATION_OPTIONS, key=f"loc_{i}")
                         custom_loc = st.text_input("✍️ Ya Naya Custom Naam Likhein:", key=f"custom_loc_{i}", placeholder="Agar list me nahi hai...")
+                        
+                        # कस्टम तारीख और समय बदलने का विकल्प
+                        st.markdown("🕒 **Custom Date & Time Settings:**")
+                        col_d, col_t = st.columns(2)
+                        with col_d:
+                            custom_date = st.text_input("Date (YYYY-MM-DD):", value=p_before['date_str'], key=f"date_{i}")
+                        with col_t:
+                            custom_time = st.text_input("Time (HH:MM AM/PM):", value=p_before['time_str'], key=f"time_{i}")
                     
                     inputs.append({
                         'before': p_before,
                         'after': p_after,
                         'loc_key': f"loc_{i}",
-                        'custom_loc_key': f"custom_loc_{i}"
+                        'custom_loc_key': f"custom_loc_{i}",
+                        'date_key': f"date_{i}",
+                        'time_key': f"time_{i}"
                     })
                 
                 st.write("---")
@@ -407,13 +416,16 @@ if uploaded_files and station_input:
                         else:
                             loc_name = "Location Not Specified"
                             
+                        final_date = st.session_state[item['date_key']]
+                        final_time = st.session_state[item['time_key']]
+                            
                         pairs_list.append({
                             'before': process_image(item['before']['bytes']),
                             'after': process_image(item['after']['bytes']),
-                            'd_before': item['before']['date_str'],
-                            't_before': item['before']['time_str'],
-                            'd_after': item['after']['date_str'],
-                            't_after': item['after']['time_str'],
+                            'd_before': final_date,
+                            't_before': final_time,
+                            'd_after': final_date,
+                            't_after': final_time,
                             'location': loc_name
                         })
                     
