@@ -211,7 +211,7 @@ def create_ppt(station_name, pairs_list):
     ppt_io = io.BytesIO()
     prs.save(ppt_io)
     ppt_io.seek(0)
-    return ppt_io
+    return ppt_io.read() # सीधा बाइट्स रिटर्न करेगा
 
 def create_pdf(station_name, pairs_list):
     pdf = FPDF('L', 'mm', 'A4')
@@ -293,7 +293,7 @@ def create_pdf(station_name, pairs_list):
     return pdf.output(dest='S').encode('latin1')
 
 st.title("🚆 Central Railway - Master Cleanliness Report")
-st.markdown("**Searchable Dropdown, Custom Location & Download Fix Added**")
+st.markdown("**Searchable Dropdown, Custom Location & Final Download Fix**")
 st.markdown("---")
 
 st.markdown("### 1. Enter Station Name")
@@ -391,8 +391,7 @@ if uploaded_files and station_input:
                             'location': loc_name
                         })
                     
-                    # सीधे सेशन स्टेट में बाइट्स सेव कर रहे हैं ताकि डाउनलोड बटन कभी फेल न हो
-                    st.session_state['ppt_data'] = create_ppt(station_input, pairs_list).getvalue()
+                    st.session_state['ppt_data'] = create_ppt(station_input, pairs_list)
                     st.session_state['pdf_data'] = create_pdf(station_input, pairs_list)
                     st.session_state['report_ready'] = True
 
