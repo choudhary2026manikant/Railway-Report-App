@@ -195,11 +195,10 @@ def create_ppt(station_name, pairs_list):
         p1.font.color.rgb = RGBColor(204, 0, 0)
         p1.alignment = PP_ALIGN.CENTER
         
-        if data['show_dt']:
-            p1_dt = tb1.text_frame.add_paragraph()
-            p1_dt.text = f"Date: {data['d_before']} | Time: {data['t_before']}"
-            p1_dt.font.size = Pt(11)
-            p1_dt.alignment = PP_ALIGN.CENTER
+        p1_dt = tb1.text_frame.add_paragraph()
+        p1_dt.text = f"Date: {data['d_before']} | Time: {data['t_before']}"
+        p1_dt.font.size = Pt(11)
+        p1_dt.alignment = PP_ALIGN.CENTER
         
         p1_loc = tb1.text_frame.add_paragraph()
         p1_loc.text = f"Location: {data['location']}"
@@ -218,11 +217,10 @@ def create_ppt(station_name, pairs_list):
         p2.font.color.rgb = RGBColor(0, 128, 0)
         p2.alignment = PP_ALIGN.CENTER
         
-        if data['show_dt']:
-            p2_dt = tb2.text_frame.add_paragraph()
-            p2_dt.text = f"Date: {data['d_after']} | Time: {data['t_after']}"
-            p2_dt.font.size = Pt(11)
-            p2_dt.alignment = PP_ALIGN.CENTER
+        p2_dt = tb2.text_frame.add_paragraph()
+        p2_dt.text = f"Date: {data['d_after']} | Time: {data['t_after']}"
+        p2_dt.font.size = Pt(11)
+        p2_dt.alignment = PP_ALIGN.CENTER
         
         p2_loc = tb2.text_frame.add_paragraph()
         p2_loc.text = f"Location: {data['location']}"
@@ -281,11 +279,10 @@ def create_pdf(station_name, pairs_list):
         pdf.set_text_color(255, 255, 255)
         pdf.cell(125, 12, txt="BEFORE", ln=1, align='C')
         
-        if data['show_dt']:
-            pdf.set_xy(15, 149)
-            pdf.set_font("Arial", 'B', 11)
-            pdf.set_text_color(50, 50, 50)
-            pdf.cell(125, 7, txt=f"Date: {data['d_before']} | Time: {data['t_before']}", ln=1, align='C')
+        pdf.set_xy(15, 149)
+        pdf.set_font("Arial", 'B', 11)
+        pdf.set_text_color(50, 50, 50)
+        pdf.cell(125, 7, txt=f"Date: {data['d_before']} | Time: {data['t_before']}", ln=1, align='C')
         
         pdf.set_line_width(0.8)
         pdf.set_draw_color(50, 50, 50)
@@ -299,11 +296,10 @@ def create_pdf(station_name, pairs_list):
         pdf.set_text_color(255, 255, 255)
         pdf.cell(125, 12, txt="AFTER", ln=1, align='C')
         
-        if data['show_dt']:
-            pdf.set_xy(155, 149)
-            pdf.set_font("Arial", 'B', 11)
-            pdf.set_text_color(50, 50, 50)
-            pdf.cell(125, 7, txt=f"Date: {data['d_after']} | Time: {data['t_after']}", ln=1, align='C')
+        pdf.set_xy(155, 149)
+        pdf.set_font("Arial", 'B', 11)
+        pdf.set_text_color(50, 50, 50)
+        pdf.cell(125, 7, txt=f"Date: {data['d_after']} | Time: {data['t_after']}", ln=1, align='C')
         
         pdf.set_fill_color(225, 235, 245)
         pdf.set_draw_color(0, 51, 153)
@@ -386,21 +382,19 @@ if uploaded_files and station_input:
                         loc_choice = st.selectbox("👉 Select Track / Location (Type to Search):", LOCATION_OPTIONS, key=f"loc_{i}")
                         custom_loc = st.text_input("✍️ Ya Naya Custom Naam Likhein:", key=f"custom_loc_{i}", placeholder="Agar list me nahi hai...")
                         
-                        # Ab yahan Date/Time ke liye option diya hai taaki bina rukawat ke customize kiya ja sake
-                        dt_mode = st.selectbox("🕒 Date & Time Option:", ["Do Not Show", "Show Auto / Edit"], key=f"dt_mode_{i}")
-                        if dt_mode == "Show Auto / Edit":
-                            col_d, col_t = st.columns(2)
-                            with col_d:
-                                custom_date = st.text_input("Date:", value=p_before['date_str'], key=f"date_{i}")
-                            with col_t:
-                                custom_time = st.text_input("Time:", value=p_before['time_str'], key=f"time_{i}")
+                        # हमेशा दिखने वाले कस्टमाइज़ेबल डेट और टाइम बॉक्स
+                        st.markdown("🕒 **Edit Date & Time:**")
+                        col_d, col_t = st.columns(2)
+                        with col_d:
+                            custom_date = st.text_input("Date:", value=p_before['date_str'], key=f"date_{i}")
+                        with col_t:
+                            custom_time = st.text_input("Time:", value=p_before['time_str'], key=f"time_{i}")
                     
                     inputs.append({
                         'before': p_before,
                         'after': p_after,
                         'loc_key': f"loc_{i}",
                         'custom_loc_key': f"custom_loc_{i}",
-                        'dt_mode_key': f"dt_mode_{i}",
                         'date_key': f"date_{i}",
                         'time_key': f"time_{i}"
                     })
@@ -422,15 +416,12 @@ if uploaded_files and station_input:
                         else:
                             loc_name = "Location Not Specified"
                             
-                        mode_val = st.session_state[item['dt_mode_key']]
-                        show_dt = (mode_val == "Show Auto / Edit")
-                        final_date = st.session_state.get(item['date_key'], "") if show_dt else ""
-                        final_time = st.session_state.get(item['time_key'], "") if show_dt else ""
+                        final_date = st.session_state[item['date_key']]
+                        final_time = st.session_state[item['time_key']]
                             
                         pairs_list.append({
                             'before': process_image(item['before']['bytes']),
                             'after': process_image(item['after']['bytes']),
-                            'show_dt': show_dt,
                             'd_before': final_date,
                             't_before': final_time,
                             'd_after': final_date,
