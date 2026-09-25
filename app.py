@@ -8,8 +8,25 @@ from PIL import Image, ImageEnhance, ImageOps, ExifTags
 import io, zipfile, re, os, tempfile, sqlite3
 from datetime import datetime, time, date, timedelta
 import urllib.parse
+import qrcode
 
 st.set_page_config(page_title="Railway Cleanliness Portal - Solapur Division", layout="wide")
+
+# ==================== OFFLINE CACHING & PWA SERVICE WORKER INJECTION ====================
+st.markdown(
+    """
+    <script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+            navigator.serviceWorker.register('/sw.js').catch(function(err) {
+                console.log('ServiceWorker registration failed: ', err);
+            });
+        });
+    }
+    </script>
+    """,
+    unsafe_allow_html=True
+)
 
 # ==================== DATABASE SETUP ====================
 def init_db():
@@ -78,7 +95,7 @@ if not st.session_state["authenticated"]:
 
 with st.sidebar:
     st.markdown("### ⚙️ Portal Navigation")
-    app_mode = st.radio("Choose Action:", ["📸 New Inspection Report", "📁 Inspection History (30 Days)"])
+    app_mode = st.radio("Choose Action:", ["📸 New Inspection Report", "📁 Inspection History (30 Days)", "📱 Generate Portal QR"])
     st.markdown("---")
     if st.button("🔒 Logout"):
         st.session_state["authenticated"] = False
@@ -112,11 +129,18 @@ RAW_LOCATIONS = [
 RAW_LOCATIONS.sort()
 LOCATION_OPTIONS = ["-- Select Exact Location --"] + RAW_LOCATIONS
 
+# ==================== AUTO IMAGE COMPRESSION & ENHANCEMENT ====================
 def process_image(img_bytes):
     img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
+    # Smart Auto-Resize for lightening file size & fast generation
     img = ImageOps.fit(img, (800, 600), Image.Resampling.LANCZOS)
+    
+    # Auto contrast enhancement for clear visibility in field reports
+    enhancer = ImageEnhance.Contrast(img)
+    img = enhancer.enhance(1.05)
+    
     img_byte_arr = io.BytesIO()
-    img.save(img_byte_arr, format='JPEG', quality=85)
+    img.save(img_byte_arr, format='JPEG', quality=80, optimize=True)
     img_byte_arr.seek(0)
     return img_byte_arr
 
@@ -355,7 +379,7 @@ if app_mode == "📸 New Inspection Report":
     station_input = st.text_input("Type the station name here:", placeholder="e.g. Solapur")
 
     st.markdown("---")
-    st.markdown("### 2. Upload Photos")
+    st.markdown("### 2. Upload Photos (Auto Compressed)")
     uploaded_files = st.file_uploader("Upload photos in bulk here", type=['zip', 'jpg', 'jpeg', 'png'], accept_multiple_files=True)
 
     if uploaded_files and station_input:
@@ -370,7 +394,7 @@ if app_mode == "📸 New Inspection Report":
                 image_files.append({'name': uf.name, 'bytes': uf.read()})
                 
         if len(image_files) >= 2:
-            with st.spinner("Processing photos & GPS EXIF tags..."):
+            with st.spinner("Smart compressing & processing photos..."):
                 for item in image_files:
                     dt_obj, gps_info = get_image_info(item['bytes'], item['name'])
                     item['dt'] = dt_obj
@@ -387,7 +411,7 @@ if app_mode == "📸 New Inspection Report":
                         item['priority'] = 2
                 
                 image_files.sort(key=lambda x: (x['dt'], x['priority'], x['name']))
-                st.success(f"✅ Total {len(image_files)} photos processed successfully.")
+                st.success(f"✅ Total {len(image_files)} photos ready for inspection.")
                 
                 with st.form("ppt_generator_form"):
                     inputs = []
@@ -419,7 +443,6 @@ if app_mode == "📸 New Inspection Report":
                                 key=f"dt_mode_{i}"
                             )
                             
-                            # Google Calendar & Watch connected native pickers
                             col_d, col_t = st.columns(2)
                             with col_d:
                                 custom_date = st.date_input("📅 Select Date:", value=p_before['date_val'], key=f"date_{i}")
@@ -443,7 +466,7 @@ if app_mode == "📸 New Inspection Report":
                     submit = st.form_submit_button("3. Generate Reports & Save to History", type="primary")
                     
                 if submit:
-                    with st.spinner("Generating Professional PPT and PDF & Saving Record..."):
+                    with st.spinner("Generating Lightning-Fast Reports & Saving Record..."):
                         pairs_list = []
                         for item in inputs:
                             dropdown_val = st.session_state[item['loc_key']]
@@ -547,3 +570,31 @@ elif app_mode == "📁 Inspection History (30 Days)":
                 st.markdown("---")
     else:
         st.info("No past inspection records found in database.")
+
+# ==================== APP MODE 3: PORTAL QR GENERATOR ====================
+elif app_mode == "📱 Generate Portal QR":
+    st.markdown("### 📱 Quick Access QR Code for Mobile / Field Officers")
+    st.markdown("Aap is QR code ko scan karke ya print karke field par direct mobile se is portal ko access kar sakte hain.")
+    
+    portal_url = "https://share.streamlit.io" # Aap apna live app URL yahan replace kar sakte hain
+    
+    qr = qrcode.QRCode(version=1, box_size=10, border=4)
+    qr.add_data(portal_url)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white")
+    
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    byte_im = buf.getvalue()
+    
+    col1, col2 = st.columns([1, 2])
+    with col1:
+        st.image(byte_im, caption="Scan to open Solapur Cleanliness Portal", use_container_width=True)
+    with col2:
+        st.info("💡 **Tip:** Aap is QR code image ko download karke apne official WhatsApp groups ya inspection diary ke front page par laga sakte hain.")
+        st.download_button(
+            label="⬇️ Download QR Code Image",
+            data=byte_im,
+            file_name="Solapur_Cleanliness_Portal_QR.png",
+            mime="image/png"
+        )
