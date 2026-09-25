@@ -81,11 +81,10 @@ LOCATION_OPTIONS = ["-- Select Exact Location --"] + RAW_LOCATIONS
 
 def process_image(img_bytes):
     img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
-    img = ImageEnhance.Color(img).enhance(1.15)
-    img = ImageEnhance.Sharpness(img).enhance(1.2)
+    #मोबाइल अपलोड क्रैश रोकने के लिए इमेज का साइज ऑप्टिमाइज्ड रखा है
     img = ImageOps.fit(img, (800, 600), Image.Resampling.LANCZOS)
     img_byte_arr = io.BytesIO()
-    img.save(img_byte_arr, format='JPEG', quality=95)
+    img.save(img_byte_arr, format='JPEG', quality=85)
     img_byte_arr.seek(0)
     return img_byte_arr
 
@@ -99,7 +98,7 @@ def get_exif_datetime(img_bytes):
                 if tag == 'DateTimeOriginal' or tag == 'DateTime':
                     dt = datetime.strptime(str(val).strip(), '%Y:%m:%d %H:%M:%S')
                     return dt
-    except Exception as e:
+    except Exception:
         pass
     return None
 
@@ -137,7 +136,6 @@ def get_image_info(img_bytes, filename):
 
 def create_ppt(station_name, pairs_list):
     prs = Presentation()
-    
     title_slide = prs.slides.add_slide(prs.slide_layouts[0])
     title_slide.shapes.title.text = "STATION CLEANLINESS REPORT"
     title_slide.shapes.title.text_frame.paragraphs[0].font.bold = True
@@ -149,7 +147,6 @@ def create_ppt(station_name, pairs_list):
 
     for data in pairs_list:
         slide = prs.slides.add_slide(prs.slide_layouts[5])
-        
         title_shape = slide.shapes.title
         title_shape.text = f"Station: {station_name.upper()}"
         title_shape.text_frame.paragraphs[0].font.size = Pt(36)
@@ -215,7 +212,7 @@ def create_ppt(station_name, pairs_list):
 
 def create_pdf(station_name, pairs_list):
     pdf = FPDF('L', 'mm', 'A4')
-    pdf.set_auto_page_break(False) # <--- Yahan auto page break ko band kar diya gaya hai taaki naye khali page na banein!
+    pdf.set_auto_page_break(False) # ब्लैंक पेज आने की समस्या हमेशा के लिए बंद
     
     for data in pairs_list:
         pdf.add_page()
@@ -294,14 +291,14 @@ def create_pdf(station_name, pairs_list):
     return pdf.output(dest='S').encode('latin1')
 
 st.title("🚆 Central Railway - Master Cleanliness Report")
-st.markdown("**Searchable Dropdown, Custom Location & Blank Page PDF Fix Added**")
+st.markdown("**Mobile Optimized & Clean PDF Generator**")
 st.markdown("---")
 
 st.markdown("### 1. Enter Station Name")
 station_input = st.text_input("Type the station name here:", placeholder="e.g. Solapur")
 
 st.markdown("---")
-st.markdown("### 2. Upload Photos or ZIP File")
+st.markdown("### 2. Upload Photos")
 uploaded_files = st.file_uploader("Upload photos in bulk here", type=['zip', 'jpg', 'jpeg', 'png'], accept_multiple_files=True)
 
 if uploaded_files and station_input:
