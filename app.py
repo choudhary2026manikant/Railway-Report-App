@@ -146,8 +146,8 @@ def extract_whatsapp_datetime(filename):
     return None, None, None
 
 def get_image_info(img_bytes, filename):
-    date_str = ""
-    time_str = ""
+    date_str = datetime.now().strftime("%Y-%m-%d")
+    time_str = datetime.now().strftime("%I:%M:%S %p")
     dt_obj = datetime.max 
     
     exif_dt = get_exif_datetime(img_bytes)
@@ -348,8 +348,8 @@ if uploaded_files and station_input:
             for item in image_files:
                 dt_obj, d_str, t_str = get_image_info(item['bytes'], item['name'])
                 item['dt'] = dt_obj
-                item['date_str'] = d_str
-                item['time_str'] = t_str
+                item['date_str'] = d_str if d_str else datetime.now().strftime("%Y-%m-%d")
+                item['time_str'] = t_str if t_str else datetime.now().strftime("%I:%M:%S %p")
                 
                 name_lower = item['name'].lower()
                 if 'before' in name_lower or 'bfr' in name_lower:
@@ -386,24 +386,21 @@ if uploaded_files and station_input:
                         loc_choice = st.selectbox("👉 Select Track / Location (Type to Search):", LOCATION_OPTIONS, key=f"loc_{i}")
                         custom_loc = st.text_input("✍️ Ya Naya Custom Naam Likhein:", key=f"custom_loc_{i}", placeholder="Agar list me nahi hai...")
                         
-                        # वैकल्पिक तारीख और समय (Optional Date & Time)
-                        include_dt = st.checkbox("🕒 Report me Date & Time dikhayein?", value=False, key=f"inc_dt_{i}")
+                        # कस्टमाइज़बल डेट और टाइम विकल्प
+                        include_dt = st.checkbox("🕒 Report me Date & Time dikhayein aur Customize karein?", value=False, key=f"inc_dt_{i}")
                         if include_dt:
                             col_d, col_t = st.columns(2)
                             with col_d:
-                                custom_date = st.text_input("Date:", value=p_before['date_str'] if p_before['date_str'] else datetime.now().strftime("%Y-%m-%d"), key=f"date_{i}")
+                                custom_date = st.text_input("Edit Date:", value=p_before['date_str'], key=f"date_{i}")
                             with col_t:
-                                custom_time = st.text_input("Time:", value=p_before['time_str'] if p_before['time_str'] else datetime.now().strftime("%I:%M %p"), key=f"time_{i}")
-                        else:
-                            st.session_state[f"date_{i}"] = ""
-                            st.session_state[f"time_{i}"] = ""
+                                custom_time = st.text_input("Edit Time:", value=p_before['time_str'], key=f"time_{i}")
                     
                     inputs.append({
                         'before': p_before,
                         'after': p_after,
                         'loc_key': f"loc_{i}",
                         'custom_loc_key': f"custom_loc_{i}",
-                        'inc_dt_key': f"inc_dt_{i}",
+                        'inc_dt_key': f"inc_dt_{i}',
                         'date_key': f"date_{i}",
                         'time_key': f"time_{i}"
                     })
