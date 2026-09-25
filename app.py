@@ -7,6 +7,7 @@ from pptx.enum.text import PP_ALIGN
 from PIL import Image, ImageEnhance, ImageOps, ExifTags
 import io, zipfile, re, os, tempfile, sqlite3
 from datetime import datetime, timedelta
+import urllib.parse
 
 st.set_page_config(page_title="Railway Cleanliness Portal - Solapur Division", layout="wide")
 
@@ -19,7 +20,6 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             station TEXT,
             inspection_date TEXT,
-            data_blob TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
@@ -38,7 +38,6 @@ def save_inspection_to_db(station, date_str):
 def get_all_inspections():
     conn = sqlite3.connect('railway_history.db', check_same_thread=False)
     cursor = conn.cursor()
-    # 30 din ya purani entries hatane ke liye (Cleanup old than 30 days optionally, ya sabhi dikhane ke liye)
     cursor.execute("SELECT id, station, inspection_date, created_at FROM inspections ORDER BY id DESC")
     rows = cursor.fetchall()
     conn.close()
@@ -175,7 +174,7 @@ def create_ppt(station_name, pairs_list):
     title_slide.shapes.title.text_frame.paragraphs[0].font.color.rgb = RGBColor(0, 51, 153)
     
     subtitle = title_slide.placeholders[1]
-    subtitle.text = "Solapur Division, Central Railway\nChief Commercial Inspector"
+    subtitle.text = "Prepared by the Sr. DCM Office (Cleanliness Section) / Solapur\nCentral Railway"
     subtitle.text_frame.paragraphs[0].font.color.rgb = RGBColor(102, 102, 102)
 
     for data in pairs_list:
@@ -317,10 +316,18 @@ def create_pdf(station_name, pairs_list):
         pdf.set_text_color(0, 51, 153)
         pdf.cell(0, 10, txt=f"Location: {data['location']}", ln=1, align='C')
         
-        pdf.set_xy(0, 190)
-        pdf.set_font("Arial", 'I', 11)
+        # Digital Stamp & Signature Footer
+        pdf.set_font("Arial", 'B', 9)
+        pdf.set_text_color(0, 51, 153)
+        pdf.set_xy(20, 185)
+        pdf.cell(100, 6, txt="[VERIFIED & APPROVED]", ln=0, align='L')
+        pdf.set_xy(180, 185)
+        pdf.cell(100, 6, txt="Prepared by: Sr. DCM Office / Solapur", ln=1, align='R')
+        
+        pdf.set_xy(0, 195)
+        pdf.set_font("Arial", 'I', 10)
         pdf.set_text_color(100, 100, 100)
-        pdf.cell(0, 10, txt="Central Railway - Solapur Division | Cleanliness Monitoring Dashboard", ln=1, align='C')
+        pdf.cell(0, 8, txt="Central Railway - Solapur Division | Cleanliness Monitoring Dashboard", ln=1, align='C')
         
         os.remove(path_b)
         os.remove(path_a)
@@ -454,7 +461,6 @@ if app_mode == "📸 New Inspection Report":
                                 'location': loc_name
                             })
                         
-                        # Save inspection info in database
                         save_inspection_to_db(station_input, datetime.now().strftime("%Y-%m-%d %H:%M"))
                         
                         st.session_state['ppt_data'] = create_ppt(station_input, pairs_list)
@@ -481,6 +487,12 @@ if app_mode == "📸 New Inspection Report":
                             file_name=f"{station_input}_Detailed_Report_{current_time_str}.pdf",
                             mime="application/pdf"
                         )
+                    
+                    # Direct WhatsApp Share Button Option
+                    st.markdown("---")
+                    st.markdown("### 📲 Direct WhatsApp Share")
+                    wa_msg = urllib.parse.quote(f"Sir, Cleanliness Inspection Report for {station_input.upper()} station has been successfully prepared by Sr. DCM Office / Solapur Division.")
+                    st.markdown(f'<a href="https://api.whatsapp.com/send?text={wa_msg}" target="_blank"><button style="background-color:#25D366;color:white;padding:10px 20px;border:none;border-radius:5px;font-size:16px;cursor:pointer;">💬 Share on WhatsApp</button></a>', unsafe_allow_html=True)
         else:
             st.warning("Please upload at least 2 photos!")
     elif uploaded_files and not station_input:
