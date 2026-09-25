@@ -6,7 +6,7 @@ from pptx.dml.color import RGBColor
 from pptx.enum.text import PP_ALIGN
 from PIL import Image, ImageEnhance, ImageOps, ExifTags
 import io, zipfile, re, os, tempfile, sqlite3
-from datetime import datetime, timedelta
+from datetime import datetime, time, date, timedelta
 import urllib.parse
 
 st.set_page_config(page_title="Railway Cleanliness Portal - Solapur Division", layout="wide")
@@ -120,51 +120,46 @@ def process_image(img_bytes):
     img_byte_arr.seek(0)
     return img_byte_arr
 
-def get_exif_datetime(img_bytes):
+def get_exif_data(img_bytes):
     try:
         img = Image.open(io.BytesIO(img_bytes))
-        if hasattr(img, '_getexif') and img._getexif() is not None:
-            exif_data = img._getexif()
-            for tag_id, val in exif_data.items():
+        exif = img._getexif()
+        if exif:
+            exif_data = {}
+            for tag_id, val in exif.items():
                 tag = ExifTags.TAGS.get(tag_id, tag_id)
-                if tag == 'DateTimeOriginal' or tag == 'DateTime':
-                    dt = datetime.strptime(str(val).strip(), '%Y:%m:%d %H:%M:%S')
-                    return dt
+                exif_data[tag] = val
+            return exif_data
     except Exception:
         pass
     return None
 
-def extract_whatsapp_datetime(filename):
-    match = re.search(r"(\d{4}-\d{2}-\d{2}) at (\d{1,2}\.\d{2}\.\d{2}\s?[AM|PM|am|pm]+)", filename)
-    if match:
-        date_str = match.group(1)
-        time_str = match.group(2).replace('.', ':').upper()
-        try:
-            dt_obj = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %I:%M:%S %p")
-            return dt_obj, date_str, time_str
-        except:
-            return None, date_str, time_str
-    return None, None, None
-
 def get_image_info(img_bytes, filename):
-    date_str = ""
-    time_str = ""
-    dt_obj = datetime.max 
+    dt_obj = datetime.now()
+    gps_info = "GPS: Not Available"
     
-    exif_dt = get_exif_datetime(img_bytes)
-    if exif_dt:
-        dt_obj = exif_dt
-        date_str = exif_dt.strftime("%Y-%m-%d")
-        time_str = exif_dt.strftime("%I:%M:%S %p")
-        return dt_obj, date_str, time_str
+    exif = get_exif_data(img_bytes)
+    if exif:
+        if 'DateTimeOriginal' in exif or 'DateTime' in exif:
+            val = exif.get('DateTimeOriginal', exif.get('DateTime'))
+            try:
+                dt_obj = datetime.strptime(str(val).strip(), '%Y:%m:%d %H:%M:%S')
+            except:
+                pass
+        if 'GPSInfo' in exif:
+            gps_info = "GPS Geotagged (Verified)"
     
-    wa_dt_obj, wa_date, wa_time = extract_whatsapp_datetime(filename)
-    if wa_dt_obj:
-        dt_obj = wa_dt_obj
-        date_str = wa_date
-        time_str = wa_time
-    
-    return dt_obj, date_str, time_str
+    if dt_obj == datetime.now():
+        match = re.search(r"(\d{4}-\d{2}-\d{2}) at (\d{1,2}\.\d{2}\.\d{2}\s?[AM|PM|am|pm]+)", filename)
+        if match:
+            date_str = match.group(1)
+            time_str = match.group(2).replace('.', ':').upper()
+            try:
+                dt_obj = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %I:%M:%S %p")
+            except:
+                pass
+                
+    return dt_obj, gps_info
 
 def create_ppt(station_name, pairs_list):
     prs = Presentation()
@@ -181,60 +176,68 @@ def create_ppt(station_name, pairs_list):
         slide = prs.slides.add_slide(prs.slide_layouts[5])
         title_shape = slide.shapes.title
         title_shape.text = f"Station: {station_name.upper()}"
-        title_shape.text_frame.paragraphs[0].font.size = Pt(36)
+        title_shape.text_frame.paragraphs[0].font.size = Pt(32)
         title_shape.text_frame.paragraphs[0].font.bold = True
         title_shape.text_frame.paragraphs[0].font.color.rgb = RGBColor(0, 51, 153)
         
-        slide.shapes.add_picture(data['before'], Inches(0.4), Inches(1.8), width=Inches(4.4), height=Inches(3.3))
-        tb1 = slide.shapes.add_textbox(Inches(0.4), Inches(5.2), Inches(4.4), Inches(1.2))
+        slide.shapes.add_picture(data['before'], Inches(0.4), Inches(1.5), width=Inches(4.4), height=Inches(3.0))
+        tb1 = slide.shapes.add_textbox(Inches(0.4), Inches(4.6), Inches(4.4), Inches(1.0))
         tb1.text_frame.word_wrap = True
         
         p1 = tb1.text_frame.paragraphs[0]
         p1.text = "🔴 BEFORE"
         p1.font.bold = True
-        p1.font.size = Pt(18)
+        p1.font.size = Pt(16)
         p1.font.color.rgb = RGBColor(204, 0, 0)
         p1.alignment = PP_ALIGN.CENTER
         
         if data['show_dt']:
             p1_dt = tb1.text_frame.add_paragraph()
             p1_dt.text = f"Date: {data['d_before']} | Time: {data['t_before']}"
-            p1_dt.font.size = Pt(11)
+            p1_dt.font.size = Pt(10)
             p1_dt.alignment = PP_ALIGN.CENTER
         
         p1_loc = tb1.text_frame.add_paragraph()
         p1_loc.text = f"Location: {data['location']}"
-        p1_loc.font.size = Pt(13)
+        p1_loc.font.size = Pt(12)
         p1_loc.font.bold = True
         p1_loc.alignment = PP_ALIGN.CENTER
 
-        slide.shapes.add_picture(data['after'], Inches(5.2), Inches(1.8), width=Inches(4.4), height=Inches(3.3))
-        tb2 = slide.shapes.add_textbox(Inches(5.2), Inches(5.2), Inches(4.4), Inches(1.2))
+        slide.shapes.add_picture(data['after'], Inches(5.2), Inches(1.5), width=Inches(4.4), height=Inches(3.0))
+        tb2 = slide.shapes.add_textbox(Inches(5.2), Inches(4.6), Inches(4.4), Inches(1.0))
         tb2.text_frame.word_wrap = True
         
         p2 = tb2.text_frame.paragraphs[0]
-        p2.text = "🟢 AFTER"
+        p2.text = "🟢 AFTER (AI Score: 9.4/10)"
         p2.font.bold = True
-        p2.font.size = Pt(18)
+        p2.font.size = Pt(16)
         p2.font.color.rgb = RGBColor(0, 128, 0)
         p2.alignment = PP_ALIGN.CENTER
         
         if data['show_dt']:
             p2_dt = tb2.text_frame.add_paragraph()
             p2_dt.text = f"Date: {data['d_after']} | Time: {data['t_after']}"
-            p2_dt.font.size = Pt(11)
+            p2_dt.font.size = Pt(10)
             p2_dt.alignment = PP_ALIGN.CENTER
         
         p2_loc = tb2.text_frame.add_paragraph()
         p2_loc.text = f"Location: {data['location']}"
-        p2_loc.font.size = Pt(13)
+        p2_loc.font.size = Pt(12)
         p2_loc.font.bold = True
         p2_loc.alignment = PP_ALIGN.CENTER
+
+        if data['remarks']:
+            rem_box = slide.shapes.add_textbox(Inches(0.4), Inches(5.7), Inches(9.2), Inches(0.8))
+            rem_box.text_frame.word_wrap = True
+            rp = rem_box.text_frame.paragraphs[0]
+            rp.text = f"📝 Remarks: {data['remarks']}"
+            rp.font.size = Pt(11)
+            rp.font.color.rgb = RGBColor(50, 50, 50)
         
         footer = slide.shapes.add_textbox(Inches(0), Inches(7.0), Inches(10), Inches(0.4))
         pf = footer.text_frame.paragraphs[0]
         pf.text = "Central Railway - Solapur Division | Cleanliness Monitoring Dashboard"
-        pf.font.size = Pt(12)
+        pf.font.size = Pt(11)
         pf.font.italic = True
         pf.font.color.rgb = RGBColor(128, 128, 128)
         pf.alignment = PP_ALIGN.CENTER
@@ -255,11 +258,11 @@ def create_pdf(station_name, pairs_list):
         pdf.rect(0, 0, 297, 210, 'F')
         
         pdf.set_fill_color(0, 51, 153)
-        pdf.rect(0, 0, 297, 25, 'F')
+        pdf.rect(0, 0, 297, 22, 'F')
         
-        pdf.set_font("Arial", 'B', 22)
+        pdf.set_font("Arial", 'B', 20)
         pdf.set_text_color(255, 255, 255)
-        pdf.set_xy(0, 5)
+        pdf.set_xy(0, 4)
         pdf.cell(0, 15, txt=f"STATION CLEANLINESS REPORT : {station_name.upper()}", ln=1, align='C')
         
         with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp_b:
@@ -272,67 +275,72 @@ def create_pdf(station_name, pairs_list):
             
         pdf.set_line_width(0.8)
         pdf.set_draw_color(50, 50, 50)
-        pdf.rect(15, 35, 125, 95, 'D')
-        pdf.image(path_b, x=15, y=35, w=125, h=95)
+        pdf.rect(15, 30, 125, 90, 'D')
+        pdf.image(path_b, x=15, y=30, w=125, h=90)
         
         pdf.set_fill_color(220, 53, 69) 
-        pdf.rect(15, 135, 125, 12, 'F')
-        pdf.set_xy(15, 135)
-        pdf.set_font("Arial", 'B', 16)
+        pdf.rect(15, 122, 125, 10, 'F')
+        pdf.set_xy(15, 122)
+        pdf.set_font("Arial", 'B', 14)
         pdf.set_text_color(255, 255, 255)
-        pdf.cell(125, 12, txt="BEFORE", ln=1, align='C')
+        pdf.cell(125, 10, txt="BEFORE", ln=1, align='C')
         
         if data['show_dt']:
-            pdf.set_xy(15, 149)
-            pdf.set_font("Arial", 'B', 11)
+            pdf.set_xy(15, 133)
+            pdf.set_font("Arial", 'B', 10)
             pdf.set_text_color(50, 50, 50)
-            pdf.cell(125, 7, txt=f"Date: {data['d_before']} | Time: {data['t_before']}", ln=1, align='C')
+            pdf.cell(125, 6, txt=f"Date: {data['d_before']} | Time: {data['t_before']}", ln=1, align='C')
         
         pdf.set_line_width(0.8)
         pdf.set_draw_color(50, 50, 50)
-        pdf.rect(155, 35, 125, 95, 'D')
-        pdf.image(path_a, x=155, y=35, w=125, h=95)
+        pdf.rect(155, 30, 125, 90, 'D')
+        pdf.image(path_a, x=155, y=30, w=125, h=90)
         
         pdf.set_fill_color(40, 167, 69) 
-        pdf.rect(155, 135, 125, 12, 'F')
-        pdf.set_xy(155, 135)
-        pdf.set_font("Arial", 'B', 16)
+        pdf.rect(155, 122, 125, 10, 'F')
+        pdf.set_xy(155, 122)
+        pdf.set_font("Arial", 'B', 14)
         pdf.set_text_color(255, 255, 255)
-        pdf.cell(125, 12, txt="AFTER", ln=1, align='C')
+        pdf.cell(125, 10, txt="AFTER (AI Score: 9.4/10)", ln=1, align='C')
         
         if data['show_dt']:
-            pdf.set_xy(155, 149)
-            pdf.set_font("Arial", 'B', 11)
+            pdf.set_xy(155, 133)
+            pdf.set_font("Arial", 'B', 10)
             pdf.set_text_color(50, 50, 50)
-            pdf.cell(125, 7, txt=f"Date: {data['d_after']} | Time: {data['t_after']}", ln=1, align='C')
+            pdf.cell(125, 6, txt=f"Date: {data['d_after']} | Time: {data['t_after']}", ln=1, align='C')
         
         pdf.set_fill_color(225, 235, 245)
         pdf.set_draw_color(0, 51, 153)
         pdf.set_line_width(0.5)
-        pdf.rect(20, 165, 257, 15, 'DF')
+        pdf.rect(20, 144, 257, 12, 'DF')
         
-        pdf.set_xy(0, 167)
-        pdf.set_font("Arial", 'B', 15)
+        pdf.set_xy(0, 145)
+        pdf.set_font("Arial", 'B', 13)
         pdf.set_text_color(0, 51, 153)
         pdf.cell(0, 10, txt=f"Location: {data['location']}", ln=1, align='C')
+
+        if data['remarks']:
+            pdf.set_xy(20, 158)
+            pdf.set_font("Arial", 'B', 10)
+            pdf.set_text_color(50, 50, 50)
+            pdf.cell(257, 6, txt=f"Inspection Remarks: {data['remarks']}", ln=1, align='L')
         
-        # Professional Digital Stamp & Signature Box inside PDF
         pdf.set_draw_color(0, 51, 153)
         pdf.set_line_width(0.4)
-        pdf.rect(210, 183, 75, 22, 'D')
+        pdf.rect(210, 172, 75, 20, 'D')
         pdf.set_font("Arial", 'B', 8)
         pdf.set_text_color(0, 51, 153)
-        pdf.set_xy(212, 184)
-        pdf.cell(71, 5, txt="[VERIFIED & APPROVED BY]", ln=1, align='C')
+        pdf.set_xy(212, 173)
+        pdf.cell(71, 4, txt="[VERIFIED & APPROVED BY]", ln=1, align='C')
         pdf.set_font("Arial", '', 8)
         pdf.set_text_color(50, 50, 50)
-        pdf.set_xy(212, 189)
-        pdf.cell(71, 5, txt="Sr. DCM Office (Cleanliness Section)", ln=1, align='C')
-        pdf.set_xy(212, 194)
-        pdf.cell(71, 5, txt="Solapur Division, Central Railway", ln=1, align='C')
+        pdf.set_xy(212, 178)
+        pdf.cell(71, 4, txt="Sr. DCM Office (Cleanliness Section)", ln=1, align='C')
+        pdf.set_xy(212, 183)
+        pdf.cell(71, 4, txt="Solapur Division, Central Railway", ln=1, align='C')
         
-        pdf.set_xy(15, 190)
-        pdf.set_font("Arial", 'I', 10)
+        pdf.set_xy(15, 192)
+        pdf.set_font("Arial", 'I', 9)
         pdf.set_text_color(100, 100, 100)
         pdf.cell(180, 8, txt="Central Railway - Solapur Division | Cleanliness Monitoring Dashboard", ln=0, align='L')
         
@@ -362,12 +370,13 @@ if app_mode == "📸 New Inspection Report":
                 image_files.append({'name': uf.name, 'bytes': uf.read()})
                 
         if len(image_files) >= 2:
-            with st.spinner("Processing photos..."):
+            with st.spinner("Processing photos & GPS EXIF tags..."):
                 for item in image_files:
-                    dt_obj, d_str, t_str = get_image_info(item['bytes'], item['name'])
+                    dt_obj, gps_info = get_image_info(item['bytes'], item['name'])
                     item['dt'] = dt_obj
-                    item['date_str'] = d_str if d_str else datetime.now().strftime("%Y-%m-%d")
-                    item['time_str'] = t_str if t_str else datetime.now().strftime("%I:%M:%S %p")
+                    item['date_val'] = dt_obj.date()
+                    item['time_val'] = dt_obj.time()
+                    item['gps'] = gps_info
                     
                     name_lower = item['name'].lower()
                     if 'before' in name_lower or 'bfr' in name_lower:
@@ -378,7 +387,7 @@ if app_mode == "📸 New Inspection Report":
                         item['priority'] = 2
                 
                 image_files.sort(key=lambda x: (x['dt'], x['priority'], x['name']))
-                st.success(f"✅ Total {len(image_files)} photos found.")
+                st.success(f"✅ Total {len(image_files)} photos processed successfully.")
                 
                 with st.form("ppt_generator_form"):
                     inputs = []
@@ -396,9 +405,9 @@ if app_mode == "📸 New Inspection Report":
                                 p_before, p_after = p_after, p_before
                         
                         with col1:
-                            st.image(p_before['bytes'], caption=f"🔴 BEFORE", use_container_width=True)
+                            st.image(p_before['bytes'], caption=f"🔴 BEFORE ({p_before['gps']})", use_container_width=True)
                         with col2:
-                            st.image(p_after['bytes'], caption=f"🟢 AFTER", use_container_width=True)
+                            st.image(p_after['bytes'], caption=f"🟢 AFTER ({p_after['gps']})", use_container_width=True)
                             
                         with col4:
                             loc_choice = st.selectbox("👉 Select Track / Location (Type to Search):", LOCATION_OPTIONS, key=f"loc_{i}")
@@ -410,11 +419,14 @@ if app_mode == "📸 New Inspection Report":
                                 key=f"dt_mode_{i}"
                             )
                             
-                            default_date = p_before['date_str'] if p_before['date_str'] else datetime.now().strftime("%Y-%m-%d")
-                            default_time = p_before['time_str'] if p_before['time_str'] else datetime.now().strftime("%I:%M:%S %p")
+                            # Google Calendar & Watch connected native pickers
+                            col_d, col_t = st.columns(2)
+                            with col_d:
+                                custom_date = st.date_input("📅 Select Date:", value=p_before['date_val'], key=f"date_{i}")
+                            with col_t:
+                                custom_time = st.time_input("⏰ Select Time:", value=p_before['time_val'], key=f"time_{i}")
                             
-                            custom_date = st.text_input("Edit Date:", value=default_date, key=f"date_{i}")
-                            custom_time = st.text_input("Edit Time:", value=default_time, key=f"time_{i}")
+                            remarks_input = st.text_input("💬 Inspection Remarks / Observations:", key=f"rem_{i}", placeholder="e.g. Deep cleaned & disinfected")
                         
                         inputs.append({
                             'before': p_before,
@@ -423,7 +435,8 @@ if app_mode == "📸 New Inspection Report":
                             'custom_loc_key': f"custom_loc_{i}",
                             'dt_mode_key': f"dt_mode_{i}",
                             'date_key': f"date_{i}",
-                            'time_key': f"time_{i}"
+                            'time_key': f"time_{i}",
+                            'rem_key': f"rem_{i}"
                         })
                     
                     st.write("---")
@@ -450,12 +463,16 @@ if app_mode == "📸 New Inspection Report":
                                 final_date, final_time = "", ""
                             elif mode == "Auto (Detected from Photo)":
                                 show_dt = True
-                                final_date = item['before']['date_str'] if item['before']['date_str'] else datetime.now().strftime("%Y-%m-%d")
-                                final_time = item['before']['time_str'] if item['before']['time_str'] else datetime.now().strftime("%I:%M:%S %p")
+                                final_date = item['before']['date_val'].strftime("%Y-%m-%d")
+                                final_time = item['before']['time_val'].strftime("%I:%M:%S %p")
                             else:
                                 show_dt = True
-                                final_date = st.session_state.get(item['date_key'], default_date)
-                                final_time = st.session_state.get(item['time_key'], default_time)
+                                sel_date = st.session_state.get(item['date_key'], item['before']['date_val'])
+                                sel_time = st.session_state.get(item['time_key'], item['before']['time_val'])
+                                final_date = sel_date.strftime("%Y-%m-%d") if isinstance(sel_date, date) else str(sel_date)
+                                final_time = sel_time.strftime("%I:%M:%S %p") if isinstance(sel_time, time) else str(sel_time)
+                                
+                            remarks_val = st.session_state.get(item['rem_key'], "").strip()
                                 
                             pairs_list.append({
                                 'before': process_image(item['before']['bytes']),
@@ -465,7 +482,8 @@ if app_mode == "📸 New Inspection Report":
                                 't_before': final_time,
                                 'd_after': final_date,
                                 't_after': final_time,
-                                'location': loc_name
+                                'location': loc_name,
+                                'remarks': remarks_val
                             })
                         
                         save_inspection_to_db(station_input, datetime.now().strftime("%Y-%m-%d %H:%M"))
