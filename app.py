@@ -8,12 +8,40 @@ from PIL import Image, ImageEnhance, ImageOps, ExifTags
 import io, zipfile, re, os, tempfile
 from datetime import datetime
 
-st.set_page_config(page_title="Railway Cleanliness Report", layout="wide")
-# पासवर्ड प्रोटेक्शन (अब पासवर्ड पूरी तरह छिप जाएगा)
-password = st.text_input("🔒 Enter Security Password to Access App:", type="password")
-if password != "Railway@2026":  # यहाँ आप अपना पासवर्ड बदल भी सकते हैं
-    st.warning("⚠️ कृपया ऐप खोलने के लिए सही पासवर्ड दर्ज करें।")
+st.set_page_config(page_title="Railway Cleanliness Portal - Solapur Division", layout="wide")
+
+# ==================== PROFESSIONAL HEADER & BRANDING ====================
+st.markdown(
+    """
+    <div style="background-color: #003399; padding: 15px; border-radius: 8px; text-align: center; color: white; margin-bottom: 20px;">
+        <h2 style="margin: 0; font-size: 24px;">CENTRAL RAILWAY — SOLAPUR DIVISION</h2>
+        <p style="margin: 5px 0 0 0; font-size: 14px; letter-spacing: 1px;">CHIEF COMMERCIAL INSPECTOR | OFFICIAL CLEANLINESS INSPECTION PORTAL</p>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
+# ==================== SECURE PASSWORD PROTECTION ====================
+if "authenticated" not in st.session_state:
+    st.session_state["authenticated"] = False
+
+if not st.session_state["authenticated"]:
+    st.markdown("### 🔐 Secure Login Required")
+    pwd_input = st.text_input("Enter Security Password:", type="password")
+    if st.button("Login to App", type="primary"):
+        if pwd_input == "Railway@2026":
+            st.session_state["authenticated"] = True
+            st.rerun()
+        else:
+            st.error("❌ Invalid Password! Please enter correct credentials.")
     st.stop()
+
+# Logout Option in Sidebar
+with st.sidebar:
+    st.markdown("### ⚙️ Portal Controls")
+    if st.button("🔒 Logout"):
+        st.session_state["authenticated"] = False
+        st.rerun()
 
 RAW_LOCATIONS = [
     "PF No. 1 (Pune End)",
@@ -86,7 +114,6 @@ LOCATION_OPTIONS = ["-- Select Exact Location --"] + RAW_LOCATIONS
 
 def process_image(img_bytes):
     img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
-    #मोबाइल अपलोड क्रैश रोकने के लिए इमेज का साइज ऑप्टिमाइज्ड रखा है
     img = ImageOps.fit(img, (800, 600), Image.Resampling.LANCZOS)
     img_byte_arr = io.BytesIO()
     img.save(img_byte_arr, format='JPEG', quality=85)
@@ -217,7 +244,7 @@ def create_ppt(station_name, pairs_list):
 
 def create_pdf(station_name, pairs_list):
     pdf = FPDF('L', 'mm', 'A4')
-    pdf.set_auto_page_break(False) # ब्लैंक पेज आने की समस्या हमेशा के लिए बंद
+    pdf.set_auto_page_break(False)
     
     for data in pairs_list:
         pdf.add_page()
@@ -294,10 +321,6 @@ def create_pdf(station_name, pairs_list):
         os.remove(path_a)
         
     return pdf.output(dest='S').encode('latin1')
-
-st.title("🚆 Central Railway - Master Cleanliness Report")
-st.markdown("**Mobile Optimized & Clean PDF Generator**")
-st.markdown("---")
 
 st.markdown("### 1. Enter Station Name")
 station_input = st.text_input("Type the station name here:", placeholder="e.g. Solapur")
