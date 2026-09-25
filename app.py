@@ -386,9 +386,9 @@ if uploaded_files and station_input:
                         loc_choice = st.selectbox("👉 Select Track / Location (Type to Search):", LOCATION_OPTIONS, key=f"loc_{i}")
                         custom_loc = st.text_input("✍️ Ya Naya Custom Naam Likhein:", key=f"custom_loc_{i}", placeholder="Agar list me nahi hai...")
                         
-                        # 3 Options for Date & Time Mode
+                        # 3 Options: Blank, Auto, ya Custom Edit (Jisme ab boxes turant dikhenge)
                         dt_mode = st.selectbox(
-                            "🕒 Date & Time Display Option:",
+                            "🕒 Date & Time Option:",
                             ["Blank (No Date/Time)", "Auto (Detected from Photo)", "Custom / Edit Date & Time"],
                             key=f"dt_mode_{i}"
                         )
@@ -396,14 +396,9 @@ if uploaded_files and station_input:
                         default_date = p_before['date_str'] if p_before['date_str'] else datetime.now().strftime("%Y-%m-%d")
                         default_time = p_before['time_str'] if p_before['time_str'] else datetime.now().strftime("%I:%M:%S %p")
                         
-                        if dt_mode == "Custom / Edit Date & Time":
-                            col_d, col_t = st.columns(2)
-                            with col_d:
-                                custom_date = st.text_input("Date:", value=default_date, key=f"date_{i}")
-                            with col_t:
-                                custom_time = st.text_input("Time:", value=default_time, key=f"time_{i}")
-                        elif dt_mode == "Auto (Detected from Photo)":
-                            st.text(f"Auto: {default_date} | {default_time}")
+                        # Fix: Har halat mein key defined rahegi taaki error ya missing ka sawal hi na ho
+                        custom_date = st.text_input("Edit Date:", value=default_date, key=f"date_{i}")
+                        custom_time = st.text_input("Edit Time:", value=default_time, key=f"time_{i}")
                     
                     inputs.append({
                         'before': p_before,
@@ -443,8 +438,8 @@ if uploaded_files and station_input:
                             final_time = item['before']['time_str'] if item['before']['time_str'] else datetime.now().strftime("%I:%M:%S %p")
                         else:  # Custom / Edit Date & Time
                             show_dt = True
-                            final_date = st.session_state.get(item['date_key'], datetime.now().strftime("%Y-%m-%d"))
-                            final_time = st.session_state.get(item['time_key'], datetime.now().strftime("%I:%M:%S %p"))
+                            final_date = st.session_state.get(item['date_key'], default_date)
+                            final_time = st.session_state.get(item['time_key'], default_time)
                             
                         pairs_list.append({
                             'before': process_image(item['before']['bytes']),
