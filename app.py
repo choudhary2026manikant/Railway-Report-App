@@ -16,10 +16,8 @@ st.set_page_config(page_title="Master Portal - CCI Manikant Choudhary (Solapur)"
 def init_db():
     conn = sqlite3.connect('railway_history.db', check_same_thread=False)
     cursor = conn.cursor()
-    # Purani table ko hata kar naye structure ke sath fresh table banana taaki operational error na aaye
-    cursor.execute('DROP TABLE IF EXISTS inspections')
     cursor.execute('''
-        CREATE TABLE inspections (
+        CREATE TABLE IF NOT EXISTS inspections (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             station TEXT,
             inspection_type TEXT,
@@ -386,7 +384,7 @@ def create_pdf(station_name, insp_type, pairs_list):
         os.remove(path_b)
         os.remove(path_a)
         
-    return pdf.output(dest='S').encode('latin1')
+    return pdf.output()
 
 # ==================== APP MODE 1: INSPECTION REPORT ====================
 if app_mode == "🔍 Master Field Inspection & Evidence":
