@@ -9,11 +9,11 @@ import io, zipfile, re, os, tempfile
 from datetime import datetime
 
 st.set_page_config(page_title="Railway Cleanliness Report", layout="wide")
-# पासवर्ड प्रोटेक्शन
+# सुरक्षित पासवर्ड प्रोटेक्शन (अब पासवर्ड छिपा हुआ दिखेगा)
 password = st.text_input("🔒 Enter Security Password to Access App:", type="password")
-if password != "Railway@2026":  # yahan aap apna manpasand password rakh sakte hain
-    st.warning("⚠️ कृपया ऐप खोलने के लिए सही पासवर्ड दर्ज करें। (Please enter password)")
-    st.stop() # इसके आगे का ऐप तब तक नहीं खुलेगा जब तक सही पासवर्ड न डाला जाए
+if password != "Railway@2026":  # यहाँ आप अपना मनपसंद पासवर्ड रख सकते हैं
+    st.warning("⚠️ कृपया ऐप खोलने के लिए सही पासवर्ड दर्ज करें।")
+    st.stop()
 
 RAW_LOCATIONS = [
     "PF No. 1 (Pune End)",
