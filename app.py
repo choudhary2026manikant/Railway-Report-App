@@ -386,20 +386,21 @@ if uploaded_files and station_input:
                         loc_choice = st.selectbox("👉 Select Track / Location (Type to Search):", LOCATION_OPTIONS, key=f"loc_{i}")
                         custom_loc = st.text_input("✍️ Ya Naya Custom Naam Likhein:", key=f"custom_loc_{i}", placeholder="Agar list me nahi hai...")
                         
-                        include_dt = st.checkbox("🕒 Report me Date & Time dikhayein aur Customize karein?", value=False, key=f"inc_dt_{i}")
-                        if include_dt:
+                        # Ab yahan Date/Time ke liye option diya hai taaki bina rukawat ke customize kiya ja sake
+                        dt_mode = st.selectbox("🕒 Date & Time Option:", ["Do Not Show", "Show Auto / Edit"], key=f"dt_mode_{i}")
+                        if dt_mode == "Show Auto / Edit":
                             col_d, col_t = st.columns(2)
                             with col_d:
-                                custom_date = st.text_input("Edit Date:", value=p_before['date_str'], key=f"date_{i}")
+                                custom_date = st.text_input("Date:", value=p_before['date_str'], key=f"date_{i}")
                             with col_t:
-                                custom_time = st.text_input("Edit Time:", value=p_before['time_str'], key=f"time_{i}")
+                                custom_time = st.text_input("Time:", value=p_before['time_str'], key=f"time_{i}")
                     
                     inputs.append({
                         'before': p_before,
                         'after': p_after,
                         'loc_key': f"loc_{i}",
                         'custom_loc_key': f"custom_loc_{i}",
-                        'inc_dt_key': f"inc_dt_{i}",
+                        'dt_mode_key': f"dt_mode_{i}",
                         'date_key': f"date_{i}",
                         'time_key': f"time_{i}"
                     })
@@ -421,7 +422,8 @@ if uploaded_files and station_input:
                         else:
                             loc_name = "Location Not Specified"
                             
-                        show_dt = st.session_state[item['inc_dt_key']]
+                        mode_val = st.session_state[item['dt_mode_key']]
+                        show_dt = (mode_val == "Show Auto / Edit")
                         final_date = st.session_state.get(item['date_key'], "") if show_dt else ""
                         final_time = st.session_state.get(item['time_key'], "") if show_dt else ""
                             
