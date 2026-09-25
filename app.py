@@ -211,10 +211,11 @@ def create_ppt(station_name, pairs_list):
     ppt_io = io.BytesIO()
     prs.save(ppt_io)
     ppt_io.seek(0)
-    return ppt_io.read() # सीधा बाइट्स रिटर्न करेगा
+    return ppt_io.read()
 
 def create_pdf(station_name, pairs_list):
     pdf = FPDF('L', 'mm', 'A4')
+    pdf.set_auto_page_break(False) # <--- Yahan auto page break ko band kar diya gaya hai taaki naye khali page na banein!
     
     for data in pairs_list:
         pdf.add_page()
@@ -293,7 +294,7 @@ def create_pdf(station_name, pairs_list):
     return pdf.output(dest='S').encode('latin1')
 
 st.title("🚆 Central Railway - Master Cleanliness Report")
-st.markdown("**Searchable Dropdown, Custom Location & Final Download Fix**")
+st.markdown("**Searchable Dropdown, Custom Location & Blank Page PDF Fix Added**")
 st.markdown("---")
 
 st.markdown("### 1. Enter Station Name")
