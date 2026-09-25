@@ -316,18 +316,25 @@ def create_pdf(station_name, pairs_list):
         pdf.set_text_color(0, 51, 153)
         pdf.cell(0, 10, txt=f"Location: {data['location']}", ln=1, align='C')
         
-        # Digital Stamp & Signature Footer
-        pdf.set_font("Arial", 'B', 9)
+        # Professional Digital Stamp & Signature Box inside PDF
+        pdf.set_draw_color(0, 51, 153)
+        pdf.set_line_width(0.4)
+        pdf.rect(210, 183, 75, 22, 'D')
+        pdf.set_font("Arial", 'B', 8)
         pdf.set_text_color(0, 51, 153)
-        pdf.set_xy(20, 185)
-        pdf.cell(100, 6, txt="[VERIFIED & APPROVED]", ln=0, align='L')
-        pdf.set_xy(180, 185)
-        pdf.cell(100, 6, txt="Prepared by: Sr. DCM Office / Solapur", ln=1, align='R')
+        pdf.set_xy(212, 184)
+        pdf.cell(71, 5, txt="[VERIFIED & APPROVED BY]", ln=1, align='C')
+        pdf.set_font("Arial", '', 8)
+        pdf.set_text_color(50, 50, 50)
+        pdf.set_xy(212, 189)
+        pdf.cell(71, 5, txt="Sr. DCM Office (Cleanliness Section)", ln=1, align='C')
+        pdf.set_xy(212, 194)
+        pdf.cell(71, 5, txt="Solapur Division, Central Railway", ln=1, align='C')
         
-        pdf.set_xy(0, 195)
+        pdf.set_xy(15, 190)
         pdf.set_font("Arial", 'I', 10)
         pdf.set_text_color(100, 100, 100)
-        pdf.cell(0, 8, txt="Central Railway - Solapur Division | Cleanliness Monitoring Dashboard", ln=1, align='C')
+        pdf.cell(180, 8, txt="Central Railway - Solapur Division | Cleanliness Monitoring Dashboard", ln=0, align='L')
         
         os.remove(path_b)
         os.remove(path_a)
@@ -488,11 +495,10 @@ if app_mode == "📸 New Inspection Report":
                             mime="application/pdf"
                         )
                     
-                    # Direct WhatsApp Share Button Option
                     st.markdown("---")
                     st.markdown("### 📲 Direct WhatsApp Share")
                     wa_msg = urllib.parse.quote(f"Sir, Cleanliness Inspection Report for {station_input.upper()} station has been successfully prepared by Sr. DCM Office / Solapur Division.")
-                    st.markdown(f'<a href="https://api.whatsapp.com/send?text={wa_msg}" target="_blank"><button style="background-color:#25D366;color:white;padding:10px 20px;border:none;border-radius:5px;font-size:16px;cursor:pointer;">💬 Share on WhatsApp</button></a>', unsafe_allow_html=True)
+                    st.markdown(f'<a href="https://api.whatsapp.com/send?text={wa_msg}" target="_blank"><button style="background-color:#25D366;color:white;padding:10px 20px;border:none;border-radius:5px;font-size:16px;cursor:pointer;">💬 Share on WhatsApp Message</button></a>', unsafe_allow_html=True)
         else:
             st.warning("Please upload at least 2 photos!")
     elif uploaded_files and not station_input:
