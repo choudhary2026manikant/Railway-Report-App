@@ -386,7 +386,6 @@ if uploaded_files and station_input:
                         loc_choice = st.selectbox("👉 Select Track / Location (Type to Search):", LOCATION_OPTIONS, key=f"loc_{i}")
                         custom_loc = st.text_input("✍️ Ya Naya Custom Naam Likhein:", key=f"custom_loc_{i}", placeholder="Agar list me nahi hai...")
                         
-                        # कस्टमाइज़बल डेट और टाइम विकल्प
                         include_dt = st.checkbox("🕒 Report me Date & Time dikhayein aur Customize karein?", value=False, key=f"inc_dt_{i}")
                         if include_dt:
                             col_d, col_t = st.columns(2)
@@ -400,7 +399,7 @@ if uploaded_files and station_input:
                         'after': p_after,
                         'loc_key': f"loc_{i}",
                         'custom_loc_key': f"custom_loc_{i}",
-                        'inc_dt_key': f"inc_dt_{i}',
+                        'inc_dt_key': f"inc_dt_{i}",
                         'date_key': f"date_{i}",
                         'time_key': f"time_{i}"
                     })
