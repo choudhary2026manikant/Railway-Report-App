@@ -5,10 +5,51 @@ from pptx.util import Inches, Pt
 from pptx.dml.color import RGBColor
 from pptx.enum.text import PP_ALIGN
 from PIL import Image, ImageEnhance, ImageOps, ExifTags
-import io, zipfile, re, os, tempfile
-from datetime import datetime
+import io, zipfile, re, os, tempfile, sqlite3
+from datetime import datetime, timedelta
 
 st.set_page_config(page_title="Railway Cleanliness Portal - Solapur Division", layout="wide")
+
+# ==================== DATABASE SETUP ====================
+def init_db():
+    conn = sqlite3.connect('railway_history.db', check_same_thread=False)
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS inspections (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            station TEXT,
+            inspection_date TEXT,
+            data_blob TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+init_db()
+
+def save_inspection_to_db(station, date_str):
+    conn = sqlite3.connect('railway_history.db', check_same_thread=False)
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO inspections (station, inspection_date) VALUES (?, ?)", (station, date_str))
+    conn.commit()
+    conn.close()
+
+def get_all_inspections():
+    conn = sqlite3.connect('railway_history.db', check_same_thread=False)
+    cursor = conn.cursor()
+    # 30 din ya purani entries hatane ke liye (Cleanup old than 30 days optionally, ya sabhi dikhane ke liye)
+    cursor.execute("SELECT id, station, inspection_date, created_at FROM inspections ORDER BY id DESC")
+    rows = cursor.fetchall()
+    conn.close()
+    return rows
+
+def delete_inspection_from_db(insp_id):
+    conn = sqlite3.connect('railway_history.db', check_same_thread=False)
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM inspections WHERE id = ?", (insp_id,))
+    conn.commit()
+    conn.close()
 
 # ==================== PROFESSIONAL HEADER & BRANDING ====================
 st.markdown(
@@ -37,75 +78,36 @@ if not st.session_state["authenticated"]:
     st.stop()
 
 with st.sidebar:
-    st.markdown("### ⚙️ Portal Controls")
+    st.markdown("### ⚙️ Portal Navigation")
+    app_mode = st.radio("Choose Action:", ["📸 New Inspection Report", "📁 Inspection History (30 Days)"])
+    st.markdown("---")
     if st.button("🔒 Logout"):
         st.session_state["authenticated"] = False
         st.rerun()
 
 RAW_LOCATIONS = [
-    "PF No. 1 (Pune End)",
-    "PF No. 1 (Middle)",
-    "PF No. 1 (Wadi End)",
-    "PF No. 2 & 3 (Pune End)",
-    "PF No. 2 & 3 (Middle)",
-    "PF No. 2 & 3 (Wadi End)",
-    "PF No. 4 & 5 (Pune End)",
-    "PF No. 4 & 5 (Middle)",
-    "PF No. 4 & 5 (Wadi End)",
-    "Track / Washable Apron - PF No. 1 (Pune End)",
-    "Track / Washable Apron - PF No. 1 (Wadi End)",
-    "Track / Washable Apron - PF No. 2 & 3 (Pune End)",
-    "Track / Washable Apron - PF No. 2 & 3 (Wadi End)",
-    "Track / Washable Apron - PF No. 4 & 5 (Pune End)",
-    "Track / Washable Apron - PF No. 4 & 5 (Wadi End)",
-    "Dead End / Siding Track Area",
-    "FOB - Pune End (Walkway)",
-    "FOB - Pune End (Staircase)",
-    "FOB - Main / Middle (Walkway)",
-    "FOB - Main / Middle (Staircase)",
-    "FOB - Wadi End (Walkway)",
-    "FOB - Wadi End (Staircase)",
-    "Lift / Elevator Landing Area",
-    "Escalator Landing Area",
-    "Subway / Underpass",
-    "Main Concourse Hall",
-    "PRS / UTS Ticket Counter Area",
-    "Upper Class (AC) Waiting Room",
-    "Sleeper Class / General Waiting Hall",
-    "Ladies Waiting Room",
-    "VIP / Executive Lounge",
-    "Food Plaza / Fast Food Unit",
-    "MPS / Fruit Stall Area",
-    "Water Booth / WVM Area",
-    "Cloak Room",
-    "IRCTC Base Kitchen",
-    "ATM Kiosk Area",
-    "Pay & Use Toilet (Pune End)",
-    "Pay & Use Toilet (Wadi End)",
-    "Divyang Toilet",
-    "Urinals Area",
-    "Main Garbage Dump / Disposal Point",
-    "Dustbin Area",
-    "Circulating Area - Main Entry (City Side)",
-    "Circulating Area - Second Entry",
-    "Auto / Taxi Stand",
-    "Premium / Four-Wheeler Parking",
-    "Two-Wheeler / Cycle Parking Area",
-    "Main Portico / Entrance Gate",
-    "Station Garden / Landscaping",
-    "Parcel Loading / Unloading Wharf",
-    "RMS Area",
-    "Station Director / SS Office Area",
-    "TC Office / TTE Lobby",
-    "GRP / RPF Post Surroundings",
-    "Crew Lobby / Running Room",
-    "Retiring Rooms / Dormitory",
-    "Track Drainage / Nullah",
-    "Coach Watering Columns",
-    "Mechanized Cleaning Control Room / Store",
-    "Bio-Toilet Cleaning Pit / Apron",
-    "C&W Sick Line / Office Area",
-    "OHE Depot / Relay Room Surroundings"
+    "PF No. 1 (Pune End)", "PF No. 1 (Middle)", "PF No. 1 (Wadi End)",
+    "PF No. 2 & 3 (Pune End)", "PF No. 2 & 3 (Middle)", "PF No. 2 & 3 (Wadi End)",
+    "PF No. 4 & 5 (Pune End)", "PF No. 4 & 5 (Middle)", "PF No. 4 & 5 (Wadi End)",
+    "Track / Washable Apron - PF No. 1 (Pune End)", "Track / Washable Apron - PF No. 1 (Wadi End)",
+    "Track / Washable Apron - PF No. 2 & 3 (Pune End)", "Track / Washable Apron - PF No. 2 & 3 (Wadi End)",
+    "Track / Washable Apron - PF No. 4 & 5 (Pune End)", "Track / Washable Apron - PF No. 4 & 5 (Wadi End)",
+    "Dead End / Siding Track Area", "FOB - Pune End (Walkway)", "FOB - Pune End (Staircase)",
+    "FOB - Main / Middle (Walkway)", "FOB - Main / Middle (Staircase)", "FOB - Wadi End (Walkway)",
+    "FOB - Wadi End (Staircase)", "Lift / Elevator Landing Area", "Escalator Landing Area",
+    "Subway / Underpass", "Main Concourse Hall", "PRS / UTS Ticket Counter Area",
+    "Upper Class (AC) Waiting Room", "Sleeper Class / General Waiting Hall", "Ladies Waiting Room",
+    "VIP / Executive Lounge", "Food Plaza / Fast Food Unit", "MPS / Fruit Stall Area",
+    "Water Booth / WVM Area", "Cloak Room", "IRCTC Base Kitchen", "ATM Kiosk Area",
+    "Pay & Use Toilet (Pune End)", "Pay & Use Toilet (Wadi End)", "Divyang Toilet", "Urinals Area",
+    "Main Garbage Dump / Disposal Point", "Dustbin Area", "Circulating Area - Main Entry (City Side)",
+    "Circulating Area - Second Entry", "Auto / Taxi Stand", "Premium / Four-Wheeler Parking",
+    "Two-Wheeler / Cycle Parking Area", "Main Portico / Entrance Gate", "Station Garden / Landscaping",
+    "Parcel Loading / Unloading Wharf", "RMS Area", "Station Director / SS Office Area",
+    "TC Office / TTE Lobby", "GRP / RPF Post Surroundings", "Crew Lobby / Running Room",
+    "Retiring Rooms / Dormitory", "Track Drainage / Nullah", "Coach Watering Columns",
+    "Mechanized Cleaning Control Room / Store", "Bio-Toilet Cleaning Pit / Apron",
+    "C&W Sick Line / Office Area", "OHE Depot / Relay Room Surroundings"
 ]
 
 RAW_LOCATIONS.sort()
@@ -325,158 +327,187 @@ def create_pdf(station_name, pairs_list):
         
     return pdf.output(dest='S').encode('latin1')
 
-st.markdown("### 1. Enter Station Name")
-station_input = st.text_input("Type the station name here:", placeholder="e.g. Solapur")
+# ==================== APP MODE 1: NEW INSPECTION ====================
+if app_mode == "📸 New Inspection Report":
+    st.markdown("### 1. Enter Station Name")
+    station_input = st.text_input("Type the station name here:", placeholder="e.g. Solapur")
 
-st.markdown("---")
-st.markdown("### 2. Upload Photos")
-uploaded_files = st.file_uploader("Upload photos in bulk here", type=['zip', 'jpg', 'jpeg', 'png'], accept_multiple_files=True)
+    st.markdown("---")
+    st.markdown("### 2. Upload Photos")
+    uploaded_files = st.file_uploader("Upload photos in bulk here", type=['zip', 'jpg', 'jpeg', 'png'], accept_multiple_files=True)
 
-if uploaded_files and station_input:
-    image_files = []
-    for uf in uploaded_files:
-        if uf.name.lower().endswith('.zip'):
-            with zipfile.ZipFile(uf, 'r') as zip_ref:
-                for file_info in zip_ref.infolist():
-                    if file_info.filename.lower().endswith(('.png', '.jpg', '.jpeg')) and not file_info.filename.startswith('__MACOSX'):
-                        image_files.append({'name': file_info.filename, 'bytes': zip_ref.read(file_info.filename)})
-        else:
-            image_files.append({'name': uf.name, 'bytes': uf.read()})
-            
-    if len(image_files) >= 2:
-        with st.spinner("Processing photos..."):
-            for item in image_files:
-                dt_obj, d_str, t_str = get_image_info(item['bytes'], item['name'])
-                item['dt'] = dt_obj
-                item['date_str'] = d_str if d_str else datetime.now().strftime("%Y-%m-%d")
-                item['time_str'] = t_str if t_str else datetime.now().strftime("%I:%M:%S %p")
+    if uploaded_files and station_input:
+        image_files = []
+        for uf in uploaded_files:
+            if uf.name.lower().endswith('.zip'):
+                with zipfile.ZipFile(uf, 'r') as zip_ref:
+                    for file_info in zip_ref.infolist():
+                        if file_info.filename.lower().endswith(('.png', '.jpg', '.jpeg')) and not file_info.filename.startswith('__MACOSX'):
+                            image_files.append({'name': file_info.filename, 'bytes': zip_ref.read(file_info.filename)})
+            else:
+                image_files.append({'name': uf.name, 'bytes': uf.read()})
                 
-                name_lower = item['name'].lower()
-                if 'before' in name_lower or 'bfr' in name_lower:
-                    item['priority'] = 0
-                elif 'after' in name_lower or 'aft' in name_lower:
-                    item['priority'] = 1
-                else:
-                    item['priority'] = 2
-            
-            image_files.sort(key=lambda x: (x['dt'], x['priority'], x['name']))
-            st.success(f"✅ Total {len(image_files)} photos found.")
-            
-            with st.form("ppt_generator_form"):
-                inputs = []
-                for i in range(0, len(image_files)-1, 2):
-                    p_before = image_files[i]
-                    p_after = image_files[i+1]
+        if len(image_files) >= 2:
+            with st.spinner("Processing photos..."):
+                for item in image_files:
+                    dt_obj, d_str, t_str = get_image_info(item['bytes'], item['name'])
+                    item['dt'] = dt_obj
+                    item['date_str'] = d_str if d_str else datetime.now().strftime("%Y-%m-%d")
+                    item['time_str'] = t_str if t_str else datetime.now().strftime("%I:%M:%S %p")
                     
-                    st.write("---")
-                    col1, col2, col3, col4 = st.columns([1, 1, 0.5, 1.5])
-                    
-                    with col3:
-                        st.write("\n")
-                        swap_photos = st.checkbox("🔄 Swap\n(Paltein)", key=f"swap_{i}")
-                        if swap_photos:
-                            p_before, p_after = p_after, p_before
-                    
-                    with col1:
-                        st.image(p_before['bytes'], caption=f"🔴 BEFORE", use_container_width=True)
-                    with col2:
-                        st.image(p_after['bytes'], caption=f"🟢 AFTER", use_container_width=True)
-                        
-                    with col4:
-                        loc_choice = st.selectbox("👉 Select Track / Location (Type to Search):", LOCATION_OPTIONS, key=f"loc_{i}")
-                        custom_loc = st.text_input("✍️ Ya Naya Custom Naam Likhein:", key=f"custom_loc_{i}", placeholder="Agar list me nahi hai...")
-                        
-                        # 3 Options: Blank, Auto, ya Custom Edit (Jisme ab boxes turant dikhenge)
-                        dt_mode = st.selectbox(
-                            "🕒 Date & Time Option:",
-                            ["Blank (No Date/Time)", "Auto (Detected from Photo)", "Custom / Edit Date & Time"],
-                            key=f"dt_mode_{i}"
-                        )
-                        
-                        default_date = p_before['date_str'] if p_before['date_str'] else datetime.now().strftime("%Y-%m-%d")
-                        default_time = p_before['time_str'] if p_before['time_str'] else datetime.now().strftime("%I:%M:%S %p")
-                        
-                        # Fix: Har halat mein key defined rahegi taaki error ya missing ka sawal hi na ho
-                        custom_date = st.text_input("Edit Date:", value=default_date, key=f"date_{i}")
-                        custom_time = st.text_input("Edit Time:", value=default_time, key=f"time_{i}")
-                    
-                    inputs.append({
-                        'before': p_before,
-                        'after': p_after,
-                        'loc_key': f"loc_{i}",
-                        'custom_loc_key': f"custom_loc_{i}",
-                        'dt_mode_key': f"dt_mode_{i}",
-                        'date_key': f"date_{i}",
-                        'time_key': f"time_{i}"
-                    })
+                    name_lower = item['name'].lower()
+                    if 'before' in name_lower or 'bfr' in name_lower:
+                        item['priority'] = 0
+                    elif 'after' in name_lower or 'aft' in name_lower:
+                        item['priority'] = 1
+                    else:
+                        item['priority'] = 2
                 
-                st.write("---")
-                submit = st.form_submit_button("3. Generate Reports", type="primary")
+                image_files.sort(key=lambda x: (x['dt'], x['priority'], x['name']))
+                st.success(f"✅ Total {len(image_files)} photos found.")
                 
-            if submit:
-                with st.spinner("Generating Professional PPT and PDF..."):
-                    pairs_list = []
-                    for item in inputs:
-                        dropdown_val = st.session_state[item['loc_key']]
-                        custom_val = st.session_state[item['custom_loc_key']].strip()
+                with st.form("ppt_generator_form"):
+                    inputs = []
+                    for i in range(0, len(image_files)-1, 2):
+                        p_before = image_files[i]
+                        p_after = image_files[i+1]
                         
-                        if custom_val:
-                            loc_name = custom_val
-                        elif dropdown_val != "-- Select Exact Location --":
-                            loc_name = dropdown_val
-                        else:
-                            loc_name = "Location Not Specified"
+                        st.write("---")
+                        col1, col2, col3, col4 = st.columns([1, 1, 0.5, 1.5])
+                        
+                        with col3:
+                            st.write("\n")
+                            swap_photos = st.checkbox("🔄 Swap\n(Paltein)", key=f"swap_{i}")
+                            if swap_photos:
+                                p_before, p_after = p_after, p_before
+                        
+                        with col1:
+                            st.image(p_before['bytes'], caption=f"🔴 BEFORE", use_container_width=True)
+                        with col2:
+                            st.image(p_after['bytes'], caption=f"🟢 AFTER", use_container_width=True)
                             
-                        mode = st.session_state[item['dt_mode_key']]
-                        
-                        if mode == "Blank (No Date/Time)":
-                            show_dt = False
-                            final_date, final_time = "", ""
-                        elif mode == "Auto (Detected from Photo)":
-                            show_dt = True
-                            final_date = item['before']['date_str'] if item['before']['date_str'] else datetime.now().strftime("%Y-%m-%d")
-                            final_time = item['before']['time_str'] if item['before']['time_str'] else datetime.now().strftime("%I:%M:%S %p")
-                        else:  # Custom / Edit Date & Time
-                            show_dt = True
-                            final_date = st.session_state.get(item['date_key'], default_date)
-                            final_time = st.session_state.get(item['time_key'], default_time)
+                        with col4:
+                            loc_choice = st.selectbox("👉 Select Track / Location (Type to Search):", LOCATION_OPTIONS, key=f"loc_{i}")
+                            custom_loc = st.text_input("✍️ Ya Naya Custom Naam Likhein:", key=f"custom_loc_{i}", placeholder="Agar list me nahi hai...")
                             
-                        pairs_list.append({
-                            'before': process_image(item['before']['bytes']),
-                            'after': process_image(item['after']['bytes']),
-                            'show_dt': show_dt,
-                            'd_before': final_date,
-                            't_before': final_time,
-                            'd_after': final_date,
-                            't_after': final_time,
-                            'location': loc_name
+                            dt_mode = st.selectbox(
+                                "🕒 Date & Time Option:",
+                                ["Blank (No Date/Time)", "Auto (Detected from Photo)", "Custom / Edit Date & Time"],
+                                key=f"dt_mode_{i}"
+                            )
+                            
+                            default_date = p_before['date_str'] if p_before['date_str'] else datetime.now().strftime("%Y-%m-%d")
+                            default_time = p_before['time_str'] if p_before['time_str'] else datetime.now().strftime("%I:%M:%S %p")
+                            
+                            custom_date = st.text_input("Edit Date:", value=default_date, key=f"date_{i}")
+                            custom_time = st.text_input("Edit Time:", value=default_time, key=f"time_{i}")
+                        
+                        inputs.append({
+                            'before': p_before,
+                            'after': p_after,
+                            'loc_key': f"loc_{i}",
+                            'custom_loc_key': f"custom_loc_{i}",
+                            'dt_mode_key': f"dt_mode_{i}",
+                            'date_key': f"date_{i}",
+                            'time_key': f"time_{i}"
                         })
                     
-                    st.session_state['ppt_data'] = create_ppt(station_input, pairs_list)
-                    st.session_state['pdf_data'] = create_pdf(station_input, pairs_list)
-                    st.session_state['report_ready'] = True
+                    st.write("---")
+                    submit = st.form_submit_button("3. Generate Reports & Save to History", type="primary")
+                    
+                if submit:
+                    with st.spinner("Generating Professional PPT and PDF & Saving Record..."):
+                        pairs_list = []
+                        for item in inputs:
+                            dropdown_val = st.session_state[item['loc_key']]
+                            custom_val = st.session_state[item['custom_loc_key']].strip()
+                            
+                            if custom_val:
+                                loc_name = custom_val
+                            elif dropdown_val != "-- Select Exact Location --":
+                                loc_name = dropdown_val
+                            else:
+                                loc_name = "Location Not Specified"
+                                
+                            mode = st.session_state[item['dt_mode_key']]
+                            
+                            if mode == "Blank (No Date/Time)":
+                                show_dt = False
+                                final_date, final_time = "", ""
+                            elif mode == "Auto (Detected from Photo)":
+                                show_dt = True
+                                final_date = item['before']['date_str'] if item['before']['date_str'] else datetime.now().strftime("%Y-%m-%d")
+                                final_time = item['before']['time_str'] if item['before']['time_str'] else datetime.now().strftime("%I:%M:%S %p")
+                            else:
+                                show_dt = True
+                                final_date = st.session_state.get(item['date_key'], default_date)
+                                final_time = st.session_state.get(item['time_key'], default_time)
+                                
+                            pairs_list.append({
+                                'before': process_image(item['before']['bytes']),
+                                'after': process_image(item['after']['bytes']),
+                                'show_dt': show_dt,
+                                'd_before': final_date,
+                                't_before': final_time,
+                                'd_after': final_date,
+                                't_after': final_time,
+                                'location': loc_name
+                            })
+                        
+                        # Save inspection info in database
+                        save_inspection_to_db(station_input, datetime.now().strftime("%Y-%m-%d %H:%M"))
+                        
+                        st.session_state['ppt_data'] = create_ppt(station_input, pairs_list)
+                        st.session_state['pdf_data'] = create_pdf(station_input, pairs_list)
+                        st.session_state['report_ready'] = True
 
-            if st.session_state.get('report_ready'):
-                st.success("🎉 Reports are Ready! Download them below:")
-                
-                current_time_str = datetime.now().strftime('%H%M%S')
-                
-                col_ppt, col_pdf = st.columns(2)
-                with col_ppt:
-                    st.download_button(
-                        label="⬇️ Download PowerPoint File", 
-                        data=st.session_state['ppt_data'], 
-                        file_name=f"{station_input}_Cleanliness_Report_{current_time_str}.pptx",
-                        mime="application/vnd.openxmlformats-officedocument.presentationml.presentation"
-                    )
-                with col_pdf:
-                    st.download_button(
-                        label="📥 Download Premium PDF Report", 
-                        data=st.session_state['pdf_data'], 
-                        file_name=f"{station_input}_Detailed_Report_{current_time_str}.pdf",
-                        mime="application/pdf"
-                    )
+                if st.session_state.get('report_ready'):
+                    st.success("🎉 Reports are Ready & Saved to Inspection History!")
+                    
+                    current_time_str = datetime.now().strftime('%H%M%S')
+                    
+                    col_ppt, col_pdf = st.columns(2)
+                    with col_ppt:
+                        st.download_button(
+                            label="⬇️ Download PowerPoint File", 
+                            data=st.session_state['ppt_data'], 
+                            file_name=f"{station_input}_Cleanliness_Report_{current_time_str}.pptx",
+                            mime="application/vnd.openxmlformats-officedocument.presentationml.presentation"
+                        )
+                    with col_pdf:
+                        st.download_button(
+                            label="📥 Download Premium PDF Report", 
+                            data=st.session_state['pdf_data'], 
+                            file_name=f"{station_input}_Detailed_Report_{current_time_str}.pdf",
+                            mime="application/pdf"
+                        )
+        else:
+            st.warning("Please upload at least 2 photos!")
+    elif uploaded_files and not station_input:
+        st.error("⚠️ Please make sure to enter the Station name above.")
+
+# ==================== APP MODE 2: INSPECTION HISTORY ====================
+elif app_mode == "📁 Inspection History (30 Days)":
+    st.markdown("### 🗂️ Previous Inspection Records (30 Days History)")
+    st.markdown("Yahan aap apne pichhle sabhi inspections ka record dekh sakte hain aur unhe manage kar sakte hain.")
+    
+    records = get_all_inspections()
+    
+    if records:
+        for rec in records:
+            insp_id, station, insp_date, created_at = rec
+            with st.container():
+                cols = st.columns([3, 2, 1])
+                with cols[0]:
+                    st.markdown(f"**Station:** `{station.upper()}`")
+                    st.markdown(f"<small style='color:gray;'>Saved on: {created_at}</small>", unsafe_allow_html=True)
+                with cols[1]:
+                    st.markdown(f"**Date:** {insp_date}")
+                with cols[2]:
+                    if st.button("🗑️ Delete", key=f"del_{insp_id}"):
+                        delete_inspection_from_db(insp_id)
+                        st.success(f"Record for {station} deleted successfully!")
+                        st.rerun()
+                st.markdown("---")
     else:
-        st.warning("Please upload at least 2 photos!")
-elif uploaded_files and not station_input:
-    st.error("⚠️ Please make sure to enter the Station name above.")
+        st.info("No past inspection records found in database.")
