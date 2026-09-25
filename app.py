@@ -544,35 +544,32 @@ if app_mode == "🔍 Master Field Inspection & Evidence":
                         st.session_state['pdf_data'] = create_pdf(station_input, inspection_type, pairs_list)
                         st.session_state['report_ready'] = True
 
-                if st.session_state.get('report_ready'):
-                    st.success("🎉 Official Inspection Report Prepared Successfully by CCI Manikant Choudhary!")
-                    
-                    current_time_str = datetime.now().strftime('%H%M%S')
-                    
-                    col_ppt, col_pdf = st.columns(2)
-                    with col_ppt:
-                        st.download_button(
-                            label="⬇️ Download PowerPoint Report (.pptx)", 
-                            data=st.session_state['ppt_data'], 
-                            file_name=f"CCI_{station_input}_Report_{current_time_str}.pptx",
-                            mime="application/vnd.openxmlformats-officedocument.presentationml.presentation"
-                        )
-                    with col_pdf:
-                        st.download_button(
-                            label="📥 Download Official PDF Report for Sr. DCM", 
-                            data=st.session_state['pdf_data'], 
-                            file_name=f"CCI_{station_input}_DCM_Submission_{current_time_str}.pdf",
-                            mime="application/pdf"
-                        )
-                    
-                    st.markdown("---")
-                    st.markdown("### 📲 Direct WhatsApp Share with Sr. DCM Office")
-                    wa_msg = urllib.parse.quote(f"Respected Sir, Inspection Report for {station_input.upper()} [{inspection_type}] has been prepared by Manikant Choudhary, CCI / Solapur and is ready for submission.")
-                    st.markdown(f'<a href="https://api.whatsapp.com/send?text={wa_msg}" target="_blank"><button style="background-color:#25D366;color:white;padding:10px 20px;border:none;border-radius:5px;font-size:16px;cursor:pointer;">💬 Share on WhatsApp</button></a>', unsafe_allow_html=True)
-        else:
-            st.warning("Please upload at least 2 photos (Before & After evidence pairs)!")
-    elif uploaded_files and not station_input:
-        st.error("⚠️ Please enter Station or Train details above.")
+    # Safely display download buttons only when data exists in session state
+    if st.session_state.get('report_ready') and 'pdf_data' in st.session_state and 'ppt_data' in st.session_state:
+        st.success("🎉 Official Inspection Report Prepared Successfully by CCI Manikant Choudhary!")
+        
+        current_time_str = datetime.now().strftime('%H%M%S')
+        
+        col_ppt, col_pdf = st.columns(2)
+        with col_ppt:
+            st.download_button(
+                label="⬇️ Download PowerPoint Report (.pptx)", 
+                data=st.session_state['ppt_data'], 
+                file_name=f"CCI_{station_input}_Report_{current_time_str}.pptx",
+                mime="application/vnd.openxmlformats-officedocument.presentationml.presentation"
+            )
+        with col_pdf:
+            st.download_button(
+                label="📥 Download Official PDF Report for Sr. DCM", 
+                data=st.session_state['pdf_data'], 
+                file_name=f"CCI_{station_input}_DCM_Submission_{current_time_str}.pdf",
+                mime="application/pdf"
+            )
+        
+        st.markdown("---")
+        st.markdown("### 📲 Direct WhatsApp Share with Sr. DCM Office")
+        wa_msg = urllib.parse.quote(f"Respected Sir, Inspection Report for {station_input} has been prepared by Manikant Choudhary, CCI / Solapur and is ready for submission.")
+        st.markdown(f'<a href="https://api.whatsapp.com/send?text={wa_msg}" target="_blank"><button style="background-color:#25D366;color:white;padding:10px 20px;border:none;border-radius:5px;font-size:16px;cursor:pointer;">💬 Share on WhatsApp</button></a>', unsafe_allow_html=True)
 
 # ==================== APP MODE 2: NOTING & LETTER DRAFTING ====================
 elif app_mode == "📝 Official Noting & Fine Proposal":
