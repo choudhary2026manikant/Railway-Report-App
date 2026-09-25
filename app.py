@@ -76,10 +76,7 @@ RAW_LOCATIONS = [
     "OHE Depot / Relay Room Surroundings"
 ]
 
-# List ko A to Z sort kiya gaya
 RAW_LOCATIONS.sort()
-
-# Sort karne ke baad sabse upar Default option jod diya gaya
 LOCATION_OPTIONS = ["-- Select Exact Location --"] + RAW_LOCATIONS
 
 def process_image(img_bytes):
@@ -216,22 +213,18 @@ def create_ppt(station_name, pairs_list):
     ppt_io.seek(0)
     return ppt_io
 
-# EKDAM PREMIUM AUR PROFESSIONAL PDF GENERATOR
 def create_pdf(station_name, pairs_list):
     pdf = FPDF('L', 'mm', 'A4')
     
     for data in pairs_list:
         pdf.add_page()
         
-        # 1. Premium Background Colour (Halka Professional Greyish-Blue)
         pdf.set_fill_color(248, 249, 250)
         pdf.rect(0, 0, 297, 210, 'F')
         
-        # 2. Top Header Banner (Dark Blue)
         pdf.set_fill_color(0, 51, 153)
         pdf.rect(0, 0, 297, 25, 'F')
         
-        # Banner Text (White)
         pdf.set_font("Arial", 'B', 22)
         pdf.set_text_color(255, 255, 255)
         pdf.set_xy(0, 5)
@@ -245,14 +238,11 @@ def create_pdf(station_name, pairs_list):
             tmp_a.write(data['after'].getvalue())
             path_a = tmp_a.name
             
-        # --- LEFT SIDE (BEFORE) ---
-        # Photo Border
         pdf.set_line_width(0.8)
         pdf.set_draw_color(50, 50, 50)
         pdf.rect(15, 35, 125, 95, 'D')
         pdf.image(path_b, x=15, y=35, w=125, h=95)
         
-        # 'BEFORE' Label (Red Background, White Text)
         pdf.set_fill_color(220, 53, 69) 
         pdf.rect(15, 135, 125, 12, 'F')
         pdf.set_xy(15, 135)
@@ -260,20 +250,16 @@ def create_pdf(station_name, pairs_list):
         pdf.set_text_color(255, 255, 255)
         pdf.cell(125, 12, txt="BEFORE", ln=1, align='C')
         
-        # Date aur Time (Niche likha hua)
         pdf.set_xy(15, 149)
         pdf.set_font("Arial", 'B', 12)
-        pdf.set_text_color(50, 50, 50) # Dark Grey
+        pdf.set_text_color(50, 50, 50)
         pdf.cell(125, 8, txt=f"Date: {data['d_before']} | Time: {data['t_before']}", ln=1, align='C')
         
-        # --- RIGHT SIDE (AFTER) ---
-        # Photo Border
         pdf.set_line_width(0.8)
         pdf.set_draw_color(50, 50, 50)
         pdf.rect(155, 35, 125, 95, 'D')
         pdf.image(path_a, x=155, y=35, w=125, h=95)
         
-        # 'AFTER' Label (Green Background, White Text)
         pdf.set_fill_color(40, 167, 69) 
         pdf.rect(155, 135, 125, 12, 'F')
         pdf.set_xy(155, 135)
@@ -281,15 +267,13 @@ def create_pdf(station_name, pairs_list):
         pdf.set_text_color(255, 255, 255)
         pdf.cell(125, 12, txt="AFTER", ln=1, align='C')
         
-        # Date aur Time (Niche likha hua)
         pdf.set_xy(155, 149)
         pdf.set_font("Arial", 'B', 12)
-        pdf.set_text_color(50, 50, 50) # Dark Grey
+        pdf.set_text_color(50, 50, 50)
         pdf.cell(125, 8, txt=f"Date: {data['d_after']} | Time: {data['t_after']}", ln=1, align='C')
         
-        # --- LOCATION BOX (SABSE NICHE BICH ME) ---
-        pdf.set_fill_color(225, 235, 245) # Halka Neela (Light Blue) Box
-        pdf.set_draw_color(0, 51, 153) # Dark blue border
+        pdf.set_fill_color(225, 235, 245)
+        pdf.set_draw_color(0, 51, 153)
         pdf.set_line_width(0.5)
         pdf.rect(20, 165, 257, 15, 'DF')
         
@@ -298,7 +282,6 @@ def create_pdf(station_name, pairs_list):
         pdf.set_text_color(0, 51, 153)
         pdf.cell(0, 10, txt=f"Location: {data['location']}", ln=1, align='C')
         
-        # --- FOOTER (WATERMARK STYLE) ---
         pdf.set_xy(0, 190)
         pdf.set_font("Arial", 'I', 11)
         pdf.set_text_color(100, 100, 100)
@@ -310,7 +293,7 @@ def create_pdf(station_name, pairs_list):
     return pdf.output(dest='S').encode('latin1')
 
 st.title("🚆 Central Railway - Master Cleanliness Report")
-st.markdown("**Searchable Dropdown, Custom Location & Premium PDF Design Added**")
+st.markdown("**Searchable Dropdown, Custom Location & Download Fix Added**")
 st.markdown("---")
 
 st.markdown("### 1. Enter Station Name")
@@ -382,7 +365,7 @@ if uploaded_files and station_input:
                     })
                 
                 st.write("---")
-                submit = st.form_submit_button("3. Generate Premium Reports", type="primary")
+                submit = st.form_submit_button("3. Generate Reports", type="primary")
                 
             if submit:
                 with st.spinner("Generating Professional PPT and PDF..."):
@@ -408,7 +391,8 @@ if uploaded_files and station_input:
                             'location': loc_name
                         })
                     
-                    st.session_state['ppt_data'] = create_ppt(station_input, pairs_list)
+                    # सीधे सेशन स्टेट में बाइट्स सेव कर रहे हैं ताकि डाउनलोड बटन कभी फेल न हो
+                    st.session_state['ppt_data'] = create_ppt(station_input, pairs_list).getvalue()
                     st.session_state['pdf_data'] = create_pdf(station_input, pairs_list)
                     st.session_state['report_ready'] = True
 
@@ -422,7 +406,8 @@ if uploaded_files and station_input:
                     st.download_button(
                         label="⬇️ Download PowerPoint File", 
                         data=st.session_state['ppt_data'], 
-                        file_name=f"{station_input}_Cleanliness_Report_{current_time_str}.pptx"
+                        file_name=f"{station_input}_Cleanliness_Report_{current_time_str}.pptx",
+                        mime="application/vnd.openxmlformats-officedocument.presentationml.presentation"
                     )
                 with col_pdf:
                     st.download_button(
