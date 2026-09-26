@@ -117,11 +117,16 @@ with st.sidebar:
     st.markdown("`Manikant Choudhary`\n\n`Chief Commercial Inspector`\n\n`Solapur Division, C.Rly.`")
     
     st.markdown("---")
-    st.markdown("✍️ **Digital Signature / Stamp:**")
+    st.markdown("✍️ **Custom Digital Signature / Seal:**")
     sig_file = st.file_uploader("Upload CCI Sign / Seal (PNG/JPG):", type=['png', 'jpg', 'jpeg'], key="sig_uploader")
     if sig_file:
         st.session_state['sig_bytes'] = sig_file.read()
-        st.success("✅ Signature loaded successfully!")
+        st.success("✅ Signature uploaded successfully!")
+    
+    # CUSTOMIZATION OPTIONS FOR SIGNATURE
+    st.session_state['custom_sign_name'] = st.text_input("Signatory Name:", value="Manikant Choudhary, CCI", key="c_name")
+    st.session_state['custom_sign_sub'] = st.text_input("Signatory Designation / Office:", value="Sr. DCM Office, Central Railway, Solapur", key="c_sub")
+    st.session_state['sign_alignment'] = st.selectbox("Signature Alignment:", ["Right Side", "Left Side", "Center"], key="c_align")
 
     st.markdown("---")
     if st.button("🔒 Logout"):
@@ -191,7 +196,7 @@ def get_image_info(img_bytes, filename):
                 
     return dt_obj, gps_info
 
-def create_ppt(station_name, insp_type, items_list, layout_mode):
+def create_ppt(station_name, insp_type, items_list, layout_mode, sig_bytes=None, sign_name="", sign_sub=""):
     prs = Presentation()
     title_slide = prs.slides.add_slide(prs.slide_layouts[0])
     title_slide.shapes.title.text = "MASTER COMMERCIAL INSPECTION REPORT"
@@ -199,7 +204,7 @@ def create_ppt(station_name, insp_type, items_list, layout_mode):
     title_slide.shapes.title.text_frame.paragraphs[0].font.color.rgb = RGBColor(0, 51, 153)
     
     subtitle = title_slide.placeholders[1]
-    subtitle.text = f"Directorate Focus: {insp_type}\nInspector: Manikant Choudhary, CCI / Solapur\nSr. DCM Office, Central Railway"
+    subtitle.text = f"Directorate Focus: {insp_type}\nInspector: {sign_name}\n{sign_sub}"
     subtitle.text_frame.paragraphs[0].font.color.rgb = RGBColor(102, 102, 102)
 
     if layout_mode == "Before & After Pairs (Comparison)":
@@ -269,10 +274,17 @@ def create_ppt(station_name, insp_type, items_list, layout_mode):
                     rp2.font.bold = True
                     rp2.font.color.rgb = RGBColor(180, 0, 0)
             
-            footer = slide.shapes.add_textbox(Inches(0), Inches(7.0), Inches(10), Inches(0.4))
+            if sig_bytes:
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp_s:
+                    tmp_s.write(sig_bytes)
+                    path_s = tmp_s.name
+                slide.shapes.add_picture(path_s, Inches(7.5), Inches(6.0), width=Inches(1.8), height=Inches(0.8))
+                os.remove(path_s)
+
+            footer = slide.shapes.add_textbox(Inches(0), Inches(6.8), Inches(10), Inches(0.4))
             pf = footer.text_frame.paragraphs[0]
-            pf.text = "Submitted by Manikant Choudhary, CCI | Sr. DCM Office / Solapur Division"
-            pf.font.size = Pt(11)
+            pf.text = f"Submitted by {sign_name} | {sign_sub}"
+            pf.font.size = Pt(10)
             pf.font.italic = True
             pf.font.color.rgb = RGBColor(128, 128, 128)
             pf.alignment = PP_ALIGN.CENTER
@@ -317,10 +329,17 @@ def create_ppt(station_name, insp_type, items_list, layout_mode):
                 p1_rem.font.color.rgb = RGBColor(50, 50, 50)
                 p1_rem.alignment = PP_ALIGN.CENTER
 
-            footer = slide.shapes.add_textbox(Inches(0), Inches(7.0), Inches(10), Inches(0.4))
+            if sig_bytes:
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp_s:
+                    tmp_s.write(sig_bytes)
+                    path_s = tmp_s.name
+                slide.shapes.add_picture(path_s, Inches(7.5), Inches(6.0), width=Inches(1.8), height=Inches(0.8))
+                os.remove(path_s)
+
+            footer = slide.shapes.add_textbox(Inches(0), Inches(6.8), Inches(10), Inches(0.4))
             pf = footer.text_frame.paragraphs[0]
-            pf.text = "Submitted by Manikant Choudhary, CCI | Sr. DCM Office / Solapur Division"
-            pf.font.size = Pt(11)
+            pf.text = f"Submitted by {sign_name} | {sign_sub}"
+            pf.font.size = Pt(10)
             pf.font.italic = True
             pf.font.color.rgb = RGBColor(128, 128, 128)
             pf.alignment = PP_ALIGN.CENTER
@@ -330,10 +349,18 @@ def create_ppt(station_name, insp_type, items_list, layout_mode):
     ppt_io.seek(0)
     return ppt_io.read()
 
-def create_pdf(station_name, insp_type, items_list, layout_mode, sig_bytes=None):
+def create_pdf(station_name, insp_type, items_list, layout_mode, sig_bytes=None, sign_name="", sign_sub="", align="Right Side"):
     pdf = FPDF('L', 'mm', 'A4')
     pdf.set_auto_page_break(False)
     
+    # Calculate X position based on alignment
+    if align == "Left Side":
+        box_x = 15
+    elif align == "Center":
+        box_x = 102
+    else: # Right Side
+        box_x = 195
+
     if layout_mode == "Before & After Pairs (Comparison)":
         for data in items_list:
             pdf.add_page()
@@ -400,21 +427,21 @@ def create_pdf(station_name, insp_type, items_list, layout_mode, sig_bytes=None)
             
             pdf.set_draw_color(0, 51, 153)
             pdf.set_line_width(0.4)
-            pdf.rect(195, 163, 92, 26, 'D')
+            pdf.rect(box_x, 163, 92, 26, 'D')
             
             if sig_bytes:
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp_s:
                     tmp_s.write(sig_bytes)
                     path_s = tmp_s.name
-                pdf.image(path_s, x=225, y=164, w=35, h=15)
+                pdf.image(path_s, x=box_x + 28, y=164, w=35, h=15)
                 os.remove(path_s)
                 
             pdf.set_font("Arial", 'B', 8)
             pdf.set_text_color(0, 51, 153)
-            pdf.set_xy(197, 180)
-            pdf.cell(88, 4, txt="Manikant Choudhary, CCI / Solapur", ln=1, align='C')
-            pdf.set_xy(197, 184)
-            pdf.cell(88, 4, txt="Sr. DCM Office, Central Railway", ln=1, align='C')
+            pdf.set_xy(box_x + 2, 180)
+            pdf.cell(88, 4, txt=sign_name, ln=1, align='C')
+            pdf.set_xy(box_x + 2, 184)
+            pdf.cell(88, 4, txt=sign_sub, ln=1, align='C')
             
             pdf.set_xy(15, 192)
             pdf.set_font("Arial", 'I', 9)
@@ -463,21 +490,21 @@ def create_pdf(station_name, insp_type, items_list, layout_mode, sig_bytes=None)
             
             pdf.set_draw_color(0, 51, 153)
             pdf.set_line_width(0.4)
-            pdf.rect(195, 163, 92, 26, 'D')
+            pdf.rect(box_x, 163, 92, 26, 'D')
             
             if sig_bytes:
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp_s:
                     tmp_s.write(sig_bytes)
                     path_s = tmp_s.name
-                pdf.image(path_s, x=225, y=164, w=35, h=15)
+                pdf.image(path_s, x=box_x + 28, y=164, w=35, h=15)
                 os.remove(path_s)
 
             pdf.set_font("Arial", 'B', 8)
             pdf.set_text_color(0, 51, 153)
-            pdf.set_xy(197, 180)
-            pdf.cell(88, 4, txt="Manikant Choudhary, CCI / Solapur", ln=1, align='C')
-            pdf.set_xy(197, 184)
-            pdf.cell(88, 4, txt="Sr. DCM Office, Central Railway", ln=1, align='C')
+            pdf.set_xy(box_x + 2, 180)
+            pdf.cell(88, 4, txt=sign_name, ln=1, align='C')
+            pdf.set_xy(box_x + 2, 184)
+            pdf.cell(88, 4, txt=sign_sub, ln=1, align='C')
             
             pdf.set_xy(15, 192)
             pdf.set_font("Arial", 'I', 9)
@@ -493,7 +520,7 @@ def create_pdf(station_name, insp_type, items_list, layout_mode, sig_bytes=None)
         return bytes(raw_output)
     return raw_output
 
-def create_noting_pdf(subject, recipient, content, photo_bytes, location_str, sig_bytes=None):
+def create_noting_pdf(subject, recipient, content, photo_bytes, location_str, sig_bytes=None, sign_name="", sign_sub=""):
     pdf = FPDF('P', 'mm', 'A4')
     pdf.set_auto_page_break(True, margin=15)
     pdf.add_page()
@@ -545,8 +572,8 @@ def create_noting_pdf(subject, recipient, content, photo_bytes, location_str, si
     pdf.set_font("Arial", 'B', 10)
     pdf.set_text_color(0, 51, 153)
     pdf.cell(0, 5, txt="Submitted by:", ln=1, align='R')
-    pdf.cell(0, 5, txt="Manikant Choudhary, CCI / Solapur", ln=1, align='R')
-    pdf.cell(0, 5, txt="Sr. DCM Office, Central Railway", ln=1, align='R')
+    pdf.cell(0, 5, txt=sign_name, ln=1, align='R')
+    pdf.cell(0, 5, txt=sign_sub, ln=1, align='R')
     
     raw_output = pdf.output()
     if isinstance(raw_output, str):
@@ -685,6 +712,10 @@ if app_mode == "🔍 Master Field Inspection & Evidence":
                     with st.spinner("Generating Official PPT & PDF Reports..."):
                         final_items = []
                         sig_data = st.session_state.get('sig_bytes', None)
+                        sign_n = st.session_state.get('custom_sign_name', 'Manikant Choudhary, CCI')
+                        sign_s = st.session_state.get('custom_sign_sub', 'Sr. DCM Office, Central Railway, Solapur')
+                        sign_align = st.session_state.get('sign_alignment', 'Right Side')
+
                         if layout_mode == "Before & After Pairs (Comparison)":
                             for idx, item in enumerate(inputs):
                                 if not item['include']:
@@ -739,8 +770,8 @@ if app_mode == "🔍 Master Field Inspection & Evidence":
                         
                         if final_items:
                             save_inspection_to_db(st_name, inspection_type, datetime.now().strftime("%Y-%m-%d %H:%M"))
-                            st.session_state['ppt_data'] = create_ppt(st_name, inspection_type, final_items, layout_mode)
-                            st.session_state['pdf_data'] = create_pdf(st_name, inspection_type, final_items, layout_mode, sig_bytes=sig_data)
+                            st.session_state['ppt_data'] = create_ppt(st_name, inspection_type, final_items, layout_mode, sig_bytes=sig_data, sign_name=sign_n, sign_sub=sign_s)
+                            st.session_state['pdf_data'] = create_pdf(st_name, inspection_type, final_items, layout_mode, sig_bytes=sig_data, sign_name=sign_n, sign_sub=sign_s, align=sign_align)
                             st.session_state['report_ready'] = True
                             st.success("🎉 Official Inspection Report Prepared Successfully!")
                         else:
@@ -769,7 +800,7 @@ if app_mode == "🔍 Master Field Inspection & Evidence":
         
         st.markdown("---")
         st.markdown("### 📲 Direct WhatsApp Share with Sr. DCM Office")
-        wa_msg = urllib.parse.quote(f"Respected Sir, Inspection Report for {st_display_name} has been prepared by Manikant Choudhary, CCI / Solapur and is ready for submission.")
+        wa_msg = urllib.parse.quote(f"Respected Sir, Inspection Report for {st_display_name} has been prepared and is ready for submission.")
         st.markdown(f'<a href="https://api.whatsapp.com/send?text={wa_msg}" target="_blank"><button style="background-color:#25D366;color:white;padding:10px 20px;border:none;border-radius:5px;font-size:16px;cursor:pointer;">💬 Share on WhatsApp</button></a>', unsafe_allow_html=True)
 
 # ==================== APP MODE 2: NOTING & LETTER DRAFTING ====================
@@ -780,7 +811,7 @@ elif app_mode == "📝 Official Noting & Fine Proposal":
     with st.form("drafting_form"):
         d_subject = st.text_input("Subject / Title:", placeholder="e.g. Proposal for imposing penalty on catering/cleaning agency at Solapur station under Railway Board guidelines.")
         d_recipient = st.text_input("Addressed To:", value="Sr. Divisional Commercial Manager (Sr. DCM), Central Railway, Solapur")
-        d_content = st.text_area("Drafting Body (Noting / Proposal text):", height=200, value="Respected Sir,\n\nIn reference to the field inspection conducted by the undersigned (Manikant Choudhary, CCI) at Solapur division covering ticketing/catering/amenities, certain commercial deficiencies and discrepancies were observed as per photographic evidences.\n\nIn view of the guidelines issued by the Railway Board Commercial Directorate, imposing a penalty / fine of Rs. [...] is strongly recommended against the defaulting agency/contractor.\n\nSubmitted for kind perusal and necessary orders please.")
+        d_content = st.text_area("Drafting Body (Noting / Proposal text):", height=200, value="Respected Sir,\n\nIn reference to the field inspection conducted by the undersigned at Solapur division covering ticketing/catering/amenities, certain commercial deficiencies and discrepancies were observed as per photographic evidences.\n\nIn view of the guidelines issued by the Railway Board Commercial Directorate, imposing a penalty / fine of Rs. [...] is strongly recommended against the defaulting agency/contractor.\n\nSubmitted for kind perusal and necessary orders please.")
         
         st.markdown("---")
         d_loc = st.selectbox("Select Evidence Location:", LOCATION_OPTIONS, key="noting_loc")
@@ -793,8 +824,10 @@ elif app_mode == "📝 Official Noting & Fine Proposal":
             loc_str = d_loc if d_loc != "-- Select Commercial/Amenity Location --" else "Solapur Division Area"
             photo_io = io.BytesIO(d_photo.read()) if d_photo else None
             sig_data = st.session_state.get('sig_bytes', None)
+            sign_n = st.session_state.get('custom_sign_name', 'Manikant Choudhary, CCI')
+            sign_s = st.session_state.get('custom_sign_sub', 'Sr. DCM Office, Central Railway, Solapur')
             
-            st.session_state['noting_pdf'] = create_noting_pdf(d_subject, d_recipient, d_content, photo_io, loc_str, sig_bytes=sig_data)
+            st.session_state['noting_pdf'] = create_noting_pdf(d_subject, d_recipient, d_content, photo_io, loc_str, sig_bytes=sig_data, sign_name=sign_n, sign_sub=sign_s)
             st.session_state['noting_ready'] = True
             st.success("✅ Official Noting saved & PDF generated successfully!")
 
