@@ -83,7 +83,7 @@ def get_all_letters():
 st.markdown(
     """
     <div style="background-color: #003399; padding: 18px; border-radius: 8px; text-align: center; color: white; margin-bottom: 20px;">
-        <h2 style="margin: 0; font-size: 24px;">CENTRAL RAILWAY — SOLAPUR DIVISION</h2>
+        <h2 style="margin: 0; font-size: 24px;">CENTRAL RAILWAY - SOLAPUR DIVISION</h2>
         <p style="margin: 5px 0 0 0; font-size: 15px; font-weight: bold; letter-spacing: 0.5px;">OFFICE OF THE SR. DIVISIONAL COMMERCIAL MANAGER (COMMERCIAL & CLEANLINESS DIRECTORATE)</p>
         <p style="margin: 3px 0 0 0; font-size: 13px; color: #ffeb3b;">MASTER INSPECTION PORTAL | CHIEF COMMERCIAL INSPECTOR (CCI): MANIKANT CHOUDHARY</p>
     </div>
@@ -148,11 +148,11 @@ LOCATION_OPTIONS = ["-- Select Commercial/Amenity Location --"] + RAW_LOCATIONS
 
 FINE_PRESETS = [
     "-- Select Railway Board Fine / Penalty Rule --",
-    "Catering Hygiene Violation (RB Circular No. 12/2022) - ₹10,000/-",
-    "Unauthorised Vending / Hawking (Sec 144/147) - ₹5,000/-",
-    "Platform Cleanliness Default (Swachh Rail Policy) - ₹25,000/-",
-    "Ticketless Travel / Irregular Ticketing Counter - ₹2,000/-",
-    "Parcel Overloading / Wharfage Violation - ₹10,000/-"
+    "Catering Hygiene Violation (RB Circular No. 12/2022) - Rs. 10,000/-",
+    "Unauthorised Vending / Hawking (Sec 144/147) - Rs. 5,000/-",
+    "Platform Cleanliness Default (Swachh Rail Policy) - Rs. 25,000/-",
+    "Ticketless Travel / Irregular Ticketing Counter - Rs. 2,000/-",
+    "Parcel Overloading / Wharfage Violation - Rs. 10,000/-"
 ]
 
 # ==================== IMAGE PROCESSING & EXIF ====================
@@ -232,7 +232,7 @@ def create_ppt(station_name, insp_type, items_list, layout_mode, sig_bytes=None,
             tb1 = slide.shapes.add_textbox(Inches(0.4), Inches(4.2), Inches(4.4), Inches(1.1))
             tb1.text_frame.word_wrap = True
             p1 = tb1.text_frame.paragraphs[0]
-            p1.text = "🔴 DEFICIENCY / BEFORE"
+            p1.text = "DEFICIENCY / BEFORE"
             p1.font.bold = True
             p1.font.size = Pt(14)
             p1.font.color.rgb = RGBColor(204, 0, 0)
@@ -254,7 +254,7 @@ def create_ppt(station_name, insp_type, items_list, layout_mode, sig_bytes=None,
             tb2 = slide.shapes.add_textbox(Inches(5.2), Inches(4.2), Inches(4.4), Inches(1.1))
             tb2.text_frame.word_wrap = True
             p2 = tb2.text_frame.paragraphs[0]
-            p2.text = f"🟢 RECTIFIED / AFTER (Score: {data['ai_score']}/10)"
+            p2.text = f"RECTIFIED / AFTER (Score: {data['ai_score']}/10)"
             p2.font.bold = True
             p2.font.size = Pt(14)
             p2.font.color.rgb = RGBColor(0, 128, 0)
@@ -276,12 +276,12 @@ def create_ppt(station_name, insp_type, items_list, layout_mode, sig_bytes=None,
                 rem_box = slide.shapes.add_textbox(Inches(0.4), Inches(5.4), Inches(9.2), Inches(1.3))
                 rem_box.text_frame.word_wrap = True
                 rp = rem_box.text_frame.paragraphs[0]
-                rp.text = f"📝 CCI Observations: {data['remarks']}"
+                rp.text = f"CCI Observations: {data['remarks']}"
                 rp.font.size = Pt(11)
                 rp.font.color.rgb = RGBColor(50, 50, 50)
                 if data['fine']:
                     rp2 = rem_box.text_frame.add_paragraph()
-                    rp2.text = f"⚖️ Fine / Penalty Rule: {data['fine']}"
+                    rp2.text = f"Fine / Penalty Rule: {data['fine']}"
                     rp2.font.size = Pt(11)
                     rp2.font.bold = True
                     rp2.font.color.rgb = RGBColor(180, 0, 0)
@@ -316,7 +316,7 @@ def create_ppt(station_name, insp_type, items_list, layout_mode, sig_bytes=None,
             tb1 = slide.shapes.add_textbox(Inches(0.5), Inches(5.2), Inches(9.0), Inches(1.5))
             tb1.text_frame.word_wrap = True
             p1 = tb1.text_frame.paragraphs[0]
-            p1.text = f"📷 Evidence #{idx+1} — Status: {d1['status'].upper()}"
+            p1.text = f"Evidence #{idx+1} - Status: {d1['status'].upper()}"
             p1.font.bold = True
             p1.font.size = Pt(13)
             p1.font.color.rgb = RGBColor(0, 51, 153)
@@ -336,7 +336,7 @@ def create_ppt(station_name, insp_type, items_list, layout_mode, sig_bytes=None,
             
             if d1['remarks']:
                 p1_rem = tb1.text_frame.add_paragraph()
-                p1_rem.text = f"📝 CCI Observations: {d1['remarks']}"
+                p1_rem.text = f"CCI Observations: {d1['remarks']}"
                 p1_rem.font.size = Pt(11)
                 p1_rem.font.color.rgb = RGBColor(50, 50, 50)
                 p1_rem.alignment = PP_ALIGN.CENTER
@@ -498,7 +498,7 @@ def create_noting_pdf(subject, recipient, content, photos_list, location_str):
     pdf.set_font("Arial", 'B', 15)
     pdf.set_text_color(255, 255, 255)
     pdf.set_xy(0, 3)
-    pdf.cell(210, 14, txt="CENTRAL RAILWAY — SOLAPUR DIVISION", ln=1, align='C')
+    pdf.cell(210, 14, txt="CENTRAL RAILWAY - SOLAPUR DIVISION", ln=1, align='C')
     
     pdf.set_xy(15, 25)
     pdf.set_font("Arial", 'B', 11)
@@ -546,7 +546,7 @@ def create_noting_pdf(subject, recipient, content, photos_list, location_str):
 
 def create_noting_docx(subject, recipient, content, photos_list, location_str):
     doc = Document()
-    doc.add_heading('CENTRAL RAILWAY — SOLAPUR DIVISION', level=1)
+    doc.add_heading('CENTRAL RAILWAY - SOLAPUR DIVISION', level=1)
     doc.add_paragraph(f"To: {recipient}")
     doc.add_paragraph(f"Subject: {subject}")
     doc.add_paragraph(f"Location: {location_str}")
@@ -680,11 +680,11 @@ if app_mode == "🔍 Master Field Inspection & Evidence":
                         st.write("---")
                         col1, col2, col3, col4, col5 = st.columns([1, 1, 0.4, 0.8, 1.3])
                         with col1:
-                            st.image(p_before['bytes'], caption=f"🔴 BEFORE ({p_before['gps']})", use_container_width=True)
+                            st.image(p_before['bytes'], caption=f"BEFORE ({p_before['gps']})", use_container_width=True)
                             edit_date_b = st.date_input("📅 Date (Before):", value=p_before['date_val'], key=f"date_b_{i}")
                             edit_time_b = st.time_input("⏰ Time (Before):", value=p_before['time_val'], key=f"time_b_{i}")
                         with col2:
-                            st.image(p_after['bytes'], caption=f"🟢 AFTER ({p_after['gps']})", use_container_width=True)
+                            st.image(p_after['bytes'], caption=f"AFTER ({p_after['gps']})", use_container_width=True)
                             edit_date_a = st.date_input("📅 Date (After):", value=p_after['date_val'], key=f"date_a_{i}")
                             edit_time_a = st.time_input("⏰ Time (After):", value=p_after['time_val'], key=f"time_a_{i}")
                         with col3:
@@ -852,7 +852,6 @@ elif app_mode == "📝 Official Noting & Fine Proposal":
     st.markdown("### 📝 Official Noting, Letter & Fine Proposal Drafting Module")
     st.markdown("Office ke liye formal noting, letter aur penalty recommendation draft taiyar karein (साथ में **Bulk Evidentiary Photos** और PDF/Word download)।")
     
-    # OUTSIDE FORM FOR PERFECT FILE UPLOADER SUPPORT
     d_subject = st.text_input("Subject / Title:", placeholder="e.g. Proposal for imposing penalty on catering/cleaning agency at Solapur station under Railway Board guidelines.")
     d_recipient = st.text_input("Addressed To:", value="Sr. Divisional Commercial Manager (Sr. DCM), Central Railway, Solapur")
     d_content = st.text_area("Drafting Body (Noting / Proposal text):", height=200, value="Respected Sir,\n\nIn reference to the field inspection conducted by the undersigned at Solapur division covering ticketing/catering/amenities, certain commercial deficiencies and discrepancies were observed as per photographic evidences.\n\nIn view of the guidelines issued by the Railway Board Commercial Directorate, imposing a penalty / fine of Rs. [...] is strongly recommended against the defaulting agency/contractor.\n\nSubmitted for kind perusal and necessary orders please.")
