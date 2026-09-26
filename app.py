@@ -544,7 +544,6 @@ if app_mode == "🔍 Master Field Inspection & Evidence":
     
     uploaded_files = st.file_uploader("Upload Bulk Evidentiary Photos (Select multiple JPG/PNG/ZIP files at once):", type=['zip', 'jpg', 'jpeg', 'png'], accept_multiple_files=True, key='bulk_uploader')
 
-    # PERSIST UPLOADED FILES IN SESSION STATE SO THEY DO NOT WIPE OUT
     if uploaded_files:
         image_files = []
         for uf in uploaded_files:
@@ -557,11 +556,10 @@ if app_mode == "🔍 Master Field Inspection & Evidence":
                 image_files.append({'name': uf.name, 'bytes': uf.read()})
         st.session_state['persisted_image_files'] = image_files
 
-    # Use persisted files if available
     active_image_files = st.session_state.get('persisted_image_files', [])
 
     if active_image_files:
-        st.info(f"📁 Total **{len(active_image_files)}** photos loaded and safely cached in session state!")
+        st.info(f"📁 Total **{len(active_image_files)}** photos loaded and safely cached!")
         with st.spinner("Processing Photos & EXIF Data..."):
             for item in active_image_files:
                 dt_obj, gps_info = get_image_info(item['bytes'], item['name'])
@@ -578,7 +576,7 @@ if app_mode == "🔍 Master Field Inspection & Evidence":
                         p_after = active_image_files[i+1]
                         
                         st.write("---")
-                        col1, col2, col3, col4 = st.columns([1, 1, 0.5, 1.5])
+                        col1, col2, col3, col4, col5 = st.columns([1, 1, 0.5, 0.8, 1.2])
                         with col1:
                             st.image(p_before['bytes'], caption=f"🔴 BEFORE ({p_before['gps']})", use_container_width=True)
                         with col2:
@@ -587,6 +585,9 @@ if app_mode == "🔍 Master Field Inspection & Evidence":
                             st.write("\n")
                             include_pair = st.checkbox("Include?", value=True, key=f"inc_{i}")
                         with col4:
+                            st.write("\n")
+                            swap_pair = st.checkbox("🔄 Swap Before & After", value=False, key=f"swap_{i}")
+                        with col5:
                             loc_choice = st.selectbox("👉 Select Location:", LOCATION_OPTIONS, key=f"loc_{i}")
                             custom_loc = st.text_input("✍️ Custom Location:", key=f"custom_loc_{i}", placeholder="Type if not listed...")
                             remarks_input = st.text_input("💬 CCI Observations:", key=f"rem_{i}", placeholder="Deficiency noted...")
@@ -594,6 +595,7 @@ if app_mode == "🔍 Master Field Inspection & Evidence":
                         
                         inputs.append({
                             'include': include_pair,
+                            'swap': swap_pair,
                             'before': p_before,
                             'after': p_after,
                             'loc_key': f"loc_{i}",
@@ -637,6 +639,11 @@ if app_mode == "🔍 Master Field Inspection & Evidence":
                             for idx, item in enumerate(inputs):
                                 if not item['include']:
                                     continue
+                                
+                                # HANDLE SWAP LOGIC
+                                img_b = item['after']['bytes'] if item['swap'] else item['before']['bytes']
+                                img_a = item['before']['bytes'] if item['swap'] else item['after']['bytes']
+                                
                                 dropdown_val = st.session_state.get(item['loc_key'], '')
                                 custom_val = st.session_state.get(item['custom_loc_key'], '').strip()
                                 loc_name = custom_val if custom_val else (dropdown_val if dropdown_val != "-- Select Commercial/Amenity Location --" else "Location Not Specified")
@@ -645,8 +652,8 @@ if app_mode == "🔍 Master Field Inspection & Evidence":
                                 ai_score = round(9.1 + (idx % 8) * 0.1, 1)
                                 
                                 final_items.append({
-                                    'before': process_image(item['before']['bytes']),
-                                    'after': process_image(item['after']['bytes']),
+                                    'before': process_image(img_b),
+                                    'after': process_image(img_a),
                                     'show_dt': True,
                                     'd_before': item['before']['date_val'].strftime("%Y-%m-%d"),
                                     't_before': item['before']['time_val'].strftime("%I:%M:%S %p"),
@@ -682,7 +689,6 @@ if app_mode == "🔍 Master Field Inspection & Evidence":
                         else:
                             st.warning("⚠️ Please select at least one photo item to include in the report.")
 
-    # ALWAYS DISPLAY DOWNLOAD BUTTONS IF REPORT IS READY IN SESSION STATE
     if st.session_state.get('report_ready') and 'pdf_data' in st.session_state and 'ppt_data' in st.session_state:
         st.success("✅ Reports are ready for download below:")
         current_time_str = datetime.now().strftime('%H%M%S')
