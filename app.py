@@ -488,7 +488,7 @@ def create_pdf(station_name, insp_type, items_list, layout_mode):
         return bytes(raw_output)
     return raw_output
 
-def create_noting_pdf(subject, recipient, content, photos_list, location_str):
+def create_noting_pdf(subject, recipient, content, photos_bytes_list, location_str):
     pdf = FPDF('P', 'mm', 'A4')
     pdf.set_auto_page_break(True, margin=15)
     pdf.add_page()
@@ -515,16 +515,17 @@ def create_noting_pdf(subject, recipient, content, photos_list, location_str):
     pdf.set_text_color(20, 20, 20)
     pdf.multi_cell(180, 6, txt=content)
     
-    if photos_list:
+    if photos_bytes_list:
         pdf.ln(5)
         pdf.set_font("Arial", 'B', 10)
         pdf.set_text_color(0, 51, 153)
         pdf.cell(0, 6, txt=f"Attached Evidence Photos [Location: {location_str}]:", ln=1)
         
-        for p_file in photos_list:
+        for p_bytes in photos_bytes_list:
             pdf.add_page()
+            processed_io = process_image(p_bytes)
             with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp_n:
-                tmp_n.write(p_file.read())
+                tmp_n.write(processed_io.getvalue())
                 path_n = tmp_n.name
             pdf.image(path_n, x=25, y=30, w=160, h=110)
             os.remove(path_n)
@@ -544,7 +545,7 @@ def create_noting_pdf(subject, recipient, content, photos_list, location_str):
         return bytes(raw_output)
     return raw_output
 
-def create_noting_docx(subject, recipient, content, photos_list, location_str):
+def create_noting_docx(subject, recipient, content, photos_bytes_list, location_str):
     doc = Document()
     doc.add_heading('CENTRAL RAILWAY - SOLAPUR DIVISION', level=1)
     doc.add_paragraph(f"To: {recipient}")
@@ -554,11 +555,12 @@ def create_noting_docx(subject, recipient, content, photos_list, location_str):
     doc.add_paragraph(content)
     doc.add_paragraph("\n")
     
-    if photos_list:
+    if photos_bytes_list:
         doc.add_heading('Attached Evidence Photos:', level=2)
-        for p_file in photos_list:
+        for p_bytes in photos_bytes_list:
+            processed_io = process_image(p_bytes)
             with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp_d:
-                tmp_d.write(p_file.read())
+                tmp_d.write(processed_io.getvalue())
                 path_d = tmp_d.name
             doc.add_picture(path_d, width=Inches(5.5))
             os.remove(path_d)
@@ -867,8 +869,11 @@ elif app_mode == "📝 Official Noting & Fine Proposal":
             save_letter_to_db(d_subject, d_recipient, d_content)
             loc_str = d_loc if d_loc != "-- Select Commercial/Amenity Location --" else "Solapur Division Area"
             
-            st.session_state['noting_pdf'] = create_noting_pdf(d_subject, d_recipient, d_content, d_photos, loc_str)
-            st.session_state['noting_docx'] = create_noting_docx(d_subject, d_recipient, d_content, d_photos, loc_str)
+            # Extract raw bytes from all uploaded files safely
+            photos_bytes_list = [p.getvalue() for p in d_photos] if d_photos else []
+            
+            st.session_state['noting_pdf'] = create_noting_pdf(d_subject, d_recipient, d_content, photos_bytes_list, loc_str)
+            st.session_state['noting_docx'] = create_noting_docx(d_subject, d_recipient, d_content, photos_bytes_list, loc_str)
             st.session_state['noting_ready'] = True
             st.success("✅ Official Noting generated successfully in both PDF and Word formats!")
         else:
