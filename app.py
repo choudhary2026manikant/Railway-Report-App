@@ -269,10 +269,8 @@ def create_ppt(station_name, insp_type, items_list, layout_mode):
             pf.font.color.rgb = RGBColor(128, 128, 128)
             pf.alignment = PP_ALIGN.CENTER
     else:
-        # STRICTLY 1 PHOTO PER SLIDE (Using blank layout index 6)
         for idx, d1 in enumerate(items_list):
             slide = prs.slides.add_slide(prs.slide_layouts[6])
-            
             header_box = slide.shapes.add_textbox(Inches(0.5), Inches(0.4), Inches(9.0), Inches(0.8))
             header_box.text_frame.word_wrap = True
             hp = header_box.text_frame.paragraphs[0]
@@ -285,7 +283,6 @@ def create_ppt(station_name, insp_type, items_list, layout_mode):
             
             tb1 = slide.shapes.add_textbox(Inches(0.5), Inches(5.2), Inches(9.0), Inches(1.5))
             tb1.text_frame.word_wrap = True
-            
             p1 = tb1.text_frame.paragraphs[0]
             p1.text = f"📷 Evidence #{idx+1} — Status: {d1['status'].upper()}"
             p1.font.bold = True
@@ -407,7 +404,6 @@ def create_pdf(station_name, insp_type, items_list, layout_mode):
             os.remove(path_b)
             os.remove(path_a)
     else:
-        # STRICTLY 1 PHOTO PER PAGE (PDF Individual Mode)
         for data in items_list:
             pdf.add_page()
             pdf.set_fill_color(248, 249, 250)
@@ -542,10 +538,11 @@ if app_mode == "🔍 Master Field Inspection & Evidence":
         ])
 
     st.markdown("---")
-    st.markdown("### 2. Choose Assembly Mode & Upload Photos")
+    st.markdown("### 2. Choose Assembly Mode & Bulk Upload Photos")
     layout_mode = st.radio("Select Report Layout Style:", ["Before & After Pairs (Comparison)", "Individual / Single Photos (Flexible Evidence)"])
     
-    uploaded_files = st.file_uploader("Upload evidentiary photos (Zip or multiple files)", type=['zip', 'jpg', 'jpeg', 'png'], accept_multiple_files=True)
+    # BULK UPLOAD ENABLED (accept_multiple_files=True)
+    uploaded_files = st.file_uploader("Upload Bulk Evidentiary Photos (Select multiple JPG/PNG/ZIP files at once):", type=['zip', 'jpg', 'jpeg', 'png'], accept_multiple_files=True)
 
     if uploaded_files and station_input:
         image_files = []
@@ -559,6 +556,7 @@ if app_mode == "🔍 Master Field Inspection & Evidence":
                 image_files.append({'name': uf.name, 'bytes': uf.read()})
                 
         if len(image_files) >= 1:
+            st.info(f"📁 Total **{len(image_files)}** photos loaded successfully in bulk mode!")
             with st.spinner("Processing Photos & EXIF Data..."):
                 for item in image_files:
                     dt_obj, gps_info = get_image_info(item['bytes'], item['name'])
