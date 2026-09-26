@@ -12,7 +12,7 @@ import qrcode
 
 st.set_page_config(page_title="Master Portal - CCI Manikant Choudhary (Solapur)", layout="wide")
 
-# ==================== DATABASE SETUP (AUTO-MIGRATION SAFE) ====================
+# ==================== DATABASE SETUP ====================
 def init_db():
     conn = sqlite3.connect('railway_history.db', check_same_thread=False)
     cursor = conn.cursor()
@@ -544,6 +544,7 @@ if app_mode == "🔍 Master Field Inspection & Evidence":
     
     uploaded_files = st.file_uploader("Upload Bulk Evidentiary Photos (Select multiple JPG/PNG/ZIP files at once):", type=['zip', 'jpg', 'jpeg', 'png'], accept_multiple_files=True, key='bulk_uploader')
 
+    # PERSIST UPLOADED FILES IN SESSION STATE SO THEY DO NOT WIPE OUT
     if uploaded_files:
         image_files = []
         for uf in uploaded_files:
@@ -554,130 +555,134 @@ if app_mode == "🔍 Master Field Inspection & Evidence":
                             image_files.append({'name': file_info.filename, 'bytes': zip_ref.read(file_info.filename)})
             else:
                 image_files.append({'name': uf.name, 'bytes': uf.read()})
-                
-        if len(image_files) >= 1:
-            st.info(f"📁 Total **{len(image_files)}** photos loaded successfully in bulk mode!")
-            with st.spinner("Processing Photos & EXIF Data..."):
-                for item in image_files:
-                    dt_obj, gps_info = get_image_info(item['bytes'], item['name'])
-                    item['dt'] = dt_obj
-                    item['date_val'] = dt_obj.date()
-                    item['time_val'] = dt_obj.time()
-                    item['gps'] = gps_info
-                
-                with st.form("inspection_form"):
-                    inputs = []
-                    if layout_mode == "Before & After Pairs (Comparison)":
-                        for i in range(0, len(image_files)-1, 2):
-                            p_before = image_files[i]
-                            p_after = image_files[i+1]
-                            
-                            st.write("---")
-                            col1, col2, col3, col4 = st.columns([1, 1, 0.5, 1.5])
-                            with col1:
-                                st.image(p_before['bytes'], caption=f"🔴 BEFORE ({p_before['gps']})", use_container_width=True)
-                            with col2:
-                                st.image(p_after['bytes'], caption=f"🟢 AFTER ({p_after['gps']})", use_container_width=True)
-                            with col3:
-                                st.write("\n")
-                                include_pair = st.checkbox("Include?", value=True, key=f"inc_{i}")
-                            with col4:
-                                loc_choice = st.selectbox("👉 Select Location:", LOCATION_OPTIONS, key=f"loc_{i}")
-                                custom_loc = st.text_input("✍️ Custom Location:", key=f"custom_loc_{i}", placeholder="Type if not listed...")
-                                remarks_input = st.text_input("💬 CCI Observations:", key=f"rem_{i}", placeholder="Deficiency noted...")
-                                fine_recommendation = st.text_input("⚖️ Fine Recommendation:", key=f"fine_{i}", placeholder="e.g. Rs. 5000/- penalty...")
-                            
-                            inputs.append({
-                                'include': include_pair,
-                                'before': p_before,
-                                'after': p_after,
-                                'loc_key': f"loc_{i}",
-                                'custom_loc_key': f"custom_loc_{i}",
-                                'rem_key': f"rem_{i}",
-                                'fine_key': f"fine_{i}"
-                            })
-                    else:
-                        for i, img_item in enumerate(image_files):
-                            st.write("---")
-                            col1, col2, col3 = st.columns([1, 1, 2])
-                            with col1:
-                                st.image(img_item['bytes'], caption=f"📷 Photo #{i+1}", use_container_width=True)
-                            with col2:
-                                include_photo = st.checkbox("Include in Report?", value=True, key=f"inc_single_{i}")
-                                status_type = st.selectbox("Status:", ["Deficiency (Before)", "Rectified (After)", "General Observation"], key=f"status_{i}")
-                            with col3:
-                                loc_choice = st.selectbox("👉 Select Location:", LOCATION_OPTIONS, key=f"loc_s_{i}")
-                                custom_loc = st.text_input("✍️ Custom Location:", key=f"custom_loc_s_{i}", placeholder="Type location...")
-                                remarks_input = st.text_input("💬 CCI Observations / Fine Note:", key=f"rem_s_{i}", placeholder="Observations or penalty note...")
-                            
-                            inputs.append({
-                                'include': include_photo,
-                                'img': img_item,
-                                'status': status_type,
-                                'loc_key': f"loc_s_{i}",
-                                'custom_loc_key': f"custom_loc_s_{i}",
-                                'rem_key': f"rem_s_{i}"
-                            })
-                    
-                    st.write("---")
-                    submit = st.form_submit_button("3. Generate Official Report for Sr. DCM Submission", type="primary")
-                    
-                if submit:
-                    if not st.session_state.get('station_input', '').strip():
-                        st.error("⚠️ Please enter Station / Train No. & Name above before generating report!")
-                    else:
-                        with st.spinner("Generating Official PPT & PDF Reports..."):
-                            final_items = []
-                            if layout_mode == "Before & After Pairs (Comparison)":
-                                for idx, item in enumerate(inputs):
-                                    if not item['include']:
-                                        continue
-                                    dropdown_val = st.session_state[item['loc_key']]
-                                    custom_val = st.session_state[item['custom_loc_key']].strip()
-                                    loc_name = custom_val if custom_val else (dropdown_val if dropdown_val != "-- Select Commercial/Amenity Location --" else "Location Not Specified")
-                                    remarks_val = st.session_state.get(item['rem_key'], "").strip()
-                                    fine_val = st.session_state.get(item['fine_key'], "").strip()
-                                    ai_score = round(9.1 + (idx % 8) * 0.1, 1)
-                                    
-                                    final_items.append({
-                                        'before': process_image(item['before']['bytes']),
-                                        'after': process_image(item['after']['bytes']),
-                                        'show_dt': True,
-                                        'd_before': item['before']['date_val'].strftime("%Y-%m-%d"),
-                                        't_before': item['before']['time_val'].strftime("%I:%M:%S %p"),
-                                        'd_after': item['after']['date_val'].strftime("%Y-%m-%d"),
-                                        't_after': item['after']['time_val'].strftime("%I:%M:%S %p"),
-                                        'location': loc_name,
-                                        'remarks': remarks_val,
-                                        'fine': fine_val,
-                                        'ai_score': ai_score
-                                    })
-                            else:
-                                for idx, item in enumerate(inputs):
-                                    if not item['include']:
-                                        continue
-                                    dropdown_val = st.session_state[item['loc_key']]
-                                    custom_val = st.session_state[item['custom_loc_key']].strip()
-                                    loc_name = custom_val if custom_val else (dropdown_val if dropdown_val != "-- Select Commercial/Amenity Location --" else "Location Not Specified")
-                                    remarks_val = st.session_state.get(item['rem_key'], "").strip()
-                                    
-                                    final_items.append({
-                                        'img': process_image(item['img']['bytes']),
-                                        'status': item['status'],
-                                        'location': loc_name,
-                                        'remarks': remarks_val
-                                    })
-                            
-                            if final_items:
-                                st_name = st.session_state.get('station_input', 'Station')
-                                save_inspection_to_db(st_name, inspection_type, datetime.now().strftime("%Y-%m-%d %H:%M"))
-                                st.session_state['ppt_data'] = create_ppt(st_name, inspection_type, final_items, layout_mode)
-                                st.session_state['pdf_data'] = create_pdf(st_name, inspection_type, final_items, layout_mode)
-                                st.session_state['report_ready'] = True
-                                st.success("🎉 Official Inspection Report Prepared Successfully!")
-                            else:
-                                st.warning("⚠️ Please select at least one photo item to include in the report.")
+        st.session_state['persisted_image_files'] = image_files
 
+    # Use persisted files if available
+    active_image_files = st.session_state.get('persisted_image_files', [])
+
+    if active_image_files:
+        st.info(f"📁 Total **{len(active_image_files)}** photos loaded and safely cached in session state!")
+        with st.spinner("Processing Photos & EXIF Data..."):
+            for item in active_image_files:
+                dt_obj, gps_info = get_image_info(item['bytes'], item['name'])
+                item['dt'] = dt_obj
+                item['date_val'] = dt_obj.date()
+                item['time_val'] = dt_obj.time()
+                item['gps'] = gps_info
+            
+            with st.form("inspection_form"):
+                inputs = []
+                if layout_mode == "Before & After Pairs (Comparison)":
+                    for i in range(0, len(active_image_files)-1, 2):
+                        p_before = active_image_files[i]
+                        p_after = active_image_files[i+1]
+                        
+                        st.write("---")
+                        col1, col2, col3, col4 = st.columns([1, 1, 0.5, 1.5])
+                        with col1:
+                            st.image(p_before['bytes'], caption=f"🔴 BEFORE ({p_before['gps']})", use_container_width=True)
+                        with col2:
+                            st.image(p_after['bytes'], caption=f"🟢 AFTER ({p_after['gps']})", use_container_width=True)
+                        with col3:
+                            st.write("\n")
+                            include_pair = st.checkbox("Include?", value=True, key=f"inc_{i}")
+                        with col4:
+                            loc_choice = st.selectbox("👉 Select Location:", LOCATION_OPTIONS, key=f"loc_{i}")
+                            custom_loc = st.text_input("✍️ Custom Location:", key=f"custom_loc_{i}", placeholder="Type if not listed...")
+                            remarks_input = st.text_input("💬 CCI Observations:", key=f"rem_{i}", placeholder="Deficiency noted...")
+                            fine_recommendation = st.text_input("⚖️ Fine Recommendation:", key=f"fine_{i}", placeholder="e.g. Rs. 5000/- penalty...")
+                        
+                        inputs.append({
+                            'include': include_pair,
+                            'before': p_before,
+                            'after': p_after,
+                            'loc_key': f"loc_{i}",
+                            'custom_loc_key': f"custom_loc_{i}",
+                            'rem_key': f"rem_{i}",
+                            'fine_key': f"fine_{i}"
+                        })
+                else:
+                    for i, img_item in enumerate(active_image_files):
+                        st.write("---")
+                        col1, col2, col3 = st.columns([1, 1, 2])
+                        with col1:
+                            st.image(img_item['bytes'], caption=f"📷 Photo #{i+1}", use_container_width=True)
+                        with col2:
+                            include_photo = st.checkbox("Include in Report?", value=True, key=f"inc_single_{i}")
+                            status_type = st.selectbox("Status:", ["Deficiency (Before)", "Rectified (After)", "General Observation"], key=f"status_{i}")
+                        with col3:
+                            loc_choice = st.selectbox("👉 Select Location:", LOCATION_OPTIONS, key=f"loc_s_{i}")
+                            custom_loc = st.text_input("✍️ Custom Location:", key=f"custom_loc_s_{i}", placeholder="Type location...")
+                            remarks_input = st.text_input("💬 CCI Observations / Fine Note:", key=f"rem_s_{i}", placeholder="Observations or penalty note...")
+                        
+                        inputs.append({
+                            'include': include_photo,
+                            'img': img_item,
+                            'status': status_type,
+                            'loc_key': f"loc_s_{i}",
+                            'custom_loc_key': f"custom_loc_s_{i}",
+                            'rem_key': f"rem_s_{i}"
+                        })
+                
+                Names_submit = st.form_submit_button("3. Generate Official Report for Sr. DCM Submission", type="primary")
+                
+            if Names_submit:
+                st_name = st.session_state.get('station_input', '').strip()
+                if not st_name:
+                    st.error("⚠️ Please enter Station / Train No. & Name above before generating report!")
+                else:
+                    with st.spinner("Generating Official PPT & PDF Reports..."):
+                        final_items = []
+                        if layout_mode == "Before & After Pairs (Comparison)":
+                            for idx, item in enumerate(inputs):
+                                if not item['include']:
+                                    continue
+                                dropdown_val = st.session_state.get(item['loc_key'], '')
+                                custom_val = st.session_state.get(item['custom_loc_key'], '').strip()
+                                loc_name = custom_val if custom_val else (dropdown_val if dropdown_val != "-- Select Commercial/Amenity Location --" else "Location Not Specified")
+                                remarks_val = st.session_state.get(item['rem_key'], "").strip()
+                                fine_val = st.session_state.get(item['fine_key'], "").strip()
+                                ai_score = round(9.1 + (idx % 8) * 0.1, 1)
+                                
+                                final_items.append({
+                                    'before': process_image(item['before']['bytes']),
+                                    'after': process_image(item['after']['bytes']),
+                                    'show_dt': True,
+                                    'd_before': item['before']['date_val'].strftime("%Y-%m-%d"),
+                                    't_before': item['before']['time_val'].strftime("%I:%M:%S %p"),
+                                    'd_after': item['after']['date_val'].strftime("%Y-%m-%d"),
+                                    't_after': item['after']['time_val'].strftime("%I:%M:%S %p"),
+                                    'location': loc_name,
+                                    'remarks': remarks_val,
+                                    'fine': fine_val,
+                                    'ai_score': ai_score
+                                })
+                        else:
+                            for idx, item in enumerate(inputs):
+                                if not item['include']:
+                                    continue
+                                dropdown_val = st.session_state.get(item['loc_key'], '')
+                                custom_val = st.session_state.get(item['custom_loc_key'], '').strip()
+                                loc_name = custom_val if custom_val else (dropdown_val if dropdown_val != "-- Select Commercial/Amenity Location --" else "Location Not Specified")
+                                remarks_val = st.session_state.get(item['rem_key'], "").strip()
+                                
+                                final_items.append({
+                                    'img': process_image(item['img']['bytes']),
+                                    'status': item['status'],
+                                    'location': loc_name,
+                                    'remarks': remarks_val
+                                })
+                        
+                        if final_items:
+                            save_inspection_to_db(st_name, inspection_type, datetime.now().strftime("%Y-%m-%d %H:%M"))
+                            st.session_state['ppt_data'] = create_ppt(st_name, inspection_type, final_items, layout_mode)
+                            st.session_state['pdf_data'] = create_pdf(st_name, inspection_type, final_items, layout_mode)
+                            st.session_state['report_ready'] = True
+                            st.success("🎉 Official Inspection Report Prepared Successfully!")
+                        else:
+                            st.warning("⚠️ Please select at least one photo item to include in the report.")
+
+    # ALWAYS DISPLAY DOWNLOAD BUTTONS IF REPORT IS READY IN SESSION STATE
     if st.session_state.get('report_ready') and 'pdf_data' in st.session_state and 'ppt_data' in st.session_state:
         st.success("✅ Reports are ready for download below:")
         current_time_str = datetime.now().strftime('%H%M%S')
