@@ -183,7 +183,7 @@ def get_image_info(img_bytes, filename):
                 
     return dt_obj, gps_info
 
-def create_ppt(station_name, insp_type, pairs_list):
+def create_ppt(station_name, insp_type, items_list, layout_mode):
     prs = Presentation()
     title_slide = prs.slides.add_slide(prs.slide_layouts[0])
     title_slide.shapes.title.text = "MASTER COMMERCIAL INSPECTION REPORT"
@@ -194,196 +194,287 @@ def create_ppt(station_name, insp_type, pairs_list):
     subtitle.text = f"Directorate Focus: {insp_type}\nInspector: Manikant Choudhary, CCI / Solapur\nSr. DCM Office, Central Railway"
     subtitle.text_frame.paragraphs[0].font.color.rgb = RGBColor(102, 102, 102)
 
-    for data in pairs_list:
-        slide = prs.slides.add_slide(prs.slide_layouts[5])
-        title_shape = slide.shapes.title
-        title_shape.text = f"Unit / Station: {station_name.upper()}"
-        title_shape.text_frame.paragraphs[0].font.size = Pt(26)
-        title_shape.text_frame.paragraphs[0].font.bold = True
-        title_shape.text_frame.paragraphs[0].font.color.rgb = RGBColor(0, 51, 153)
-        
-        slide.shapes.add_picture(data['before'], Inches(0.4), Inches(1.4), width=Inches(4.4), height=Inches(2.7))
-        tb1 = slide.shapes.add_textbox(Inches(0.4), Inches(4.2), Inches(4.4), Inches(1.1))
-        tb1.text_frame.word_wrap = True
-        
-        p1 = tb1.text_frame.paragraphs[0]
-        p1.text = "🔴 DEFICIENCY / BEFORE"
-        p1.font.bold = True
-        p1.font.size = Pt(14)
-        p1.font.color.rgb = RGBColor(204, 0, 0)
-        p1.alignment = PP_ALIGN.CENTER
-        
-        if data['show_dt']:
-            p1_dt = tb1.text_frame.add_paragraph()
-            p1_dt.text = f"Date: {data['d_before']} | Time: {data['t_before']}"
-            p1_dt.font.size = Pt(10)
-            p1_dt.alignment = PP_ALIGN.CENTER
-        
-        p1_loc = tb1.text_frame.add_paragraph()
-        p1_loc.text = f"Location: {data['location']}"
-        p1_loc.font.size = Pt(11)
-        p1_loc.font.bold = True
-        p1_loc.alignment = PP_ALIGN.CENTER
-
-        slide.shapes.add_picture(data['after'], Inches(5.2), Inches(1.4), width=Inches(4.4), height=Inches(2.7))
-        tb2 = slide.shapes.add_textbox(Inches(5.2), Inches(4.2), Inches(4.4), Inches(1.1))
-        tb2.text_frame.word_wrap = True
-        
-        p2 = tb2.text_frame.paragraphs[0]
-        p2.text = f"🟢 RECTIFIED / AFTER (Score: {data['ai_score']}/10)"
-        p2.font.bold = True
-        p2.font.size = Pt(14)
-        p2.font.color.rgb = RGBColor(0, 128, 0)
-        p2.alignment = PP_ALIGN.CENTER
-        
-        if data['show_dt']:
-            p2_dt = tb2.text_frame.add_paragraph()
-            p2_dt.text = f"Date: {data['d_after']} | Time: {data['t_after']}"
-            p2_dt.font.size = Pt(10)
-            p2_dt.alignment = PP_ALIGN.CENTER
-        
-        p2_loc = tb2.text_frame.add_paragraph()
-        p2_loc.text = f"Location: {data['location']}"
-        p2_loc.font.size = Pt(11)
-        p2_loc.font.bold = True
-        p2_loc.alignment = PP_ALIGN.CENTER
-
-        if data['remarks'] or data['fine']:
-            rem_box = slide.shapes.add_textbox(Inches(0.4), Inches(5.4), Inches(9.2), Inches(1.3))
-            rem_box.text_frame.word_wrap = True
-            rp = rem_box.text_frame.paragraphs[0]
-            rp.text = f"📝 CCI Observations: {data['remarks']}"
-            rp.font.size = Pt(11)
-            rp.font.color.rgb = RGBColor(50, 50, 50)
+    if layout_mode == "Before & After Pairs (Comparison)":
+        for data in items_list:
+            slide = prs.slides.add_slide(prs.slide_layouts[5])
+            title_shape = slide.shapes.title
+            title_shape.text = f"Unit / Station: {station_name.upper()}"
+            title_shape.text_frame.paragraphs[0].font.size = Pt(26)
+            title_shape.text_frame.paragraphs[0].font.bold = True
+            title_shape.text_frame.paragraphs[0].font.color.rgb = RGBColor(0, 51, 153)
             
-            if data['fine']:
-                rp2 = rem_box.text_frame.add_paragraph()
-                rp2.text = f"⚖️ Fine / Penalty Recommendation (Rail Board Rules): {data['fine']}"
-                rp2.font.size = Pt(11)
-                rp2.font.bold = True
-                rp2.font.color.rgb = RGBColor(180, 0, 0)
-        
-        footer = slide.shapes.add_textbox(Inches(0), Inches(7.0), Inches(10), Inches(0.4))
-        pf = footer.text_frame.paragraphs[0]
-        pf.text = "Submitted by Manikant Choudhary, CCI | Sr. DCM Office / Solapur Division"
-        pf.font.size = Pt(11)
-        pf.font.italic = True
-        pf.font.color.rgb = RGBColor(128, 128, 128)
-        pf.alignment = PP_ALIGN.CENTER
+            slide.shapes.add_picture(data['before'], Inches(0.4), Inches(1.4), width=Inches(4.4), height=Inches(2.7))
+            tb1 = slide.shapes.add_textbox(Inches(0.4), Inches(4.2), Inches(4.4), Inches(1.1))
+            tb1.text_frame.word_wrap = True
+            p1 = tb1.text_frame.paragraphs[0]
+            p1.text = "🔴 DEFICIENCY / BEFORE"
+            p1.font.bold = True
+            p1.font.size = Pt(14)
+            p1.font.color.rgb = RGBColor(204, 0, 0)
+            p1.alignment = PP_ALIGN.CENTER
+            
+            if data['show_dt']:
+                p1_dt = tb1.text_frame.add_paragraph()
+                p1_dt.text = f"Date: {data['d_before']} | Time: {data['t_before']}"
+                p1_dt.font.size = Pt(10)
+                p1_dt.alignment = PP_ALIGN.CENTER
+            
+            p1_loc = tb1.text_frame.add_paragraph()
+            p1_loc.text = f"Location: {data['location']}"
+            p1_loc.font.size = Pt(11)
+            p1_loc.font.bold = True
+            p1_loc.alignment = PP_ALIGN.CENTER
+
+            slide.shapes.add_picture(data['after'], Inches(5.2), Inches(1.4), width=Inches(4.4), height=Inches(2.7))
+            tb2 = slide.shapes.add_textbox(Inches(5.2), Inches(4.2), Inches(4.4), Inches(1.1))
+            tb2.text_frame.word_wrap = True
+            p2 = tb2.text_frame.paragraphs[0]
+            p2.text = f"🟢 RECTIFIED / AFTER (Score: {data['ai_score']}/10)"
+            p2.font.bold = True
+            p2.font.size = Pt(14)
+            p2.font.color.rgb = RGBColor(0, 128, 0)
+            p2.alignment = PP_ALIGN.CENTER
+            
+            if data['show_dt']:
+                p2_dt = tb2.text_frame.add_paragraph()
+                p2_dt.text = f"Date: {data['d_after']} | Time: {data['t_after']}"
+                p2_dt.font.size = Pt(10)
+                p2_dt.alignment = PP_ALIGN.CENTER
+            
+            p2_loc = tb2.text_frame.add_paragraph()
+            p2_loc.text = f"Location: {data['location']}"
+            p2_loc.font.size = Pt(11)
+            p2_loc.font.bold = True
+            p2_loc.alignment = PP_ALIGN.CENTER
+
+            if data['remarks'] or data['fine']:
+                rem_box = slide.shapes.add_textbox(Inches(0.4), Inches(5.4), Inches(9.2), Inches(1.3))
+                rem_box.text_frame.word_wrap = True
+                rp = rem_box.text_frame.paragraphs[0]
+                rp.text = f"📝 CCI Observations: {data['remarks']}"
+                rp.font.size = Pt(11)
+                rp.font.color.rgb = RGBColor(50, 50, 50)
+                if data['fine']:
+                    rp2 = rem_box.text_frame.add_paragraph()
+                    rp2.text = f"⚖️ Fine / Penalty Recommendation: {data['fine']}"
+                    rp2.font.size = Pt(11)
+                    rp2.font.bold = True
+                    rp2.font.color.rgb = RGBColor(180, 0, 0)
+            
+            footer = slide.shapes.add_textbox(Inches(0), Inches(7.0), Inches(10), Inches(0.4))
+            pf = footer.text_frame.paragraphs[0]
+            pf.text = "Submitted by Manikant Choudhary, CCI | Sr. DCM Office / Solapur Division"
+            pf.font.size = Pt(11)
+            pf.font.italic = True
+            pf.font.color.rgb = RGBColor(128, 128, 128)
+            pf.alignment = PP_ALIGN.CENTER
+    else:
+        # Single / Independent Photos Mode (2 photos per slide layout)
+        for i in range(0, len(items_list), 2):
+            slide = prs.slides.add_slide(prs.slide_layouts[5])
+            title_shape = slide.shapes.title
+            title_shape.text = f"Unit / Station: {station_name.upper()}"
+            title_shape.text_frame.paragraphs[0].font.size = Pt(26)
+            title_shape.text_frame.paragraphs[0].font.bold = True
+            title_shape.text_frame.paragraphs[0].font.color.rgb = RGBColor(0, 51, 153)
+            
+            # First photo on slide
+            d1 = items_list[i]
+            slide.shapes.add_picture(d1['img'], Inches(0.4), Inches(1.4), width=Inches(4.4), height=Inches(2.7))
+            tb1 = slide.shapes.add_textbox(Inches(0.4), Inches(4.2), Inches(4.4), Inches(1.5))
+            tb1.text_frame.word_wrap = True
+            p1 = tb1.text_frame.paragraphs[0]
+            p1.text = f"📷 Evidence #{i+1} ({d1['status'].upper()})"
+            p1.font.bold = True
+            p1.font.size = Pt(13)
+            p1.font.color.rgb = RGBColor(0, 51, 153)
+            p1.alignment = PP_ALIGN.CENTER
+            
+            p1_loc = tb1.text_frame.add_paragraph()
+            p1_loc.text = f"Location: {d1['location']}"
+            p1_loc.font.size = Pt(11)
+            p1_loc.alignment = PP_ALIGN.CENTER
+            
+            if d1['remarks']:
+                p1_rem = tb1.text_frame.add_paragraph()
+                p1_rem.text = f"Remarks: {d1['remarks']}"
+                p1_rem.font.size = Pt(10)
+                p1_rem.alignment = PP_ALIGN.CENTER
+
+            # Second photo on slide (if available)
+            if i + 1 < len(items_list):
+                d2 = items_list[i+1]
+                slide.shapes.add_picture(d2['img'], Inches(5.2), Inches(1.4), width=Inches(4.4), height=Inches(2.7))
+                tb2 = slide.shapes.add_textbox(Inches(5.2), Inches(4.2), Inches(4.4), Inches(1.5))
+                tb2.text_frame.word_wrap = True
+                p2 = tb2.text_frame.paragraphs[0]
+                p2.text = f"📷 Evidence #{i+2} ({d2['status'].upper()})"
+                p2.font.bold = True
+                p2.font.size = Pt(13)
+                p2.font.color.rgb = RGBColor(0, 51, 153)
+                p2.alignment = PP_ALIGN.CENTER
+                
+                p2_loc = tb2.text_frame.add_paragraph()
+                p2_loc.text = f"Location: {d2['location']}"
+                p2_loc.font.size = Pt(11)
+                p2_loc.alignment = PP_ALIGN.CENTER
+                
+                if d2['remarks']:
+                    p2_rem = tb2.text_frame.add_paragraph()
+                    p2_rem.text = f"Remarks: {d2['remarks']}"
+                    p2_rem.font.size = Pt(10)
+                    p2_rem.alignment = PP_ALIGN.CENTER
 
     ppt_io = io.BytesIO()
     prs.save(ppt_io)
     ppt_io.seek(0)
     return ppt_io.read()
 
-def create_pdf(station_name, insp_type, pairs_list):
+def create_pdf(station_name, insp_type, items_list, layout_mode):
     pdf = FPDF('L', 'mm', 'A4')
     pdf.set_auto_page_break(False)
     
-    for data in pairs_list:
-        pdf.add_page()
-        
-        pdf.set_fill_color(248, 249, 250)
-        pdf.rect(0, 0, 297, 210, 'F')
-        
-        pdf.set_fill_color(0, 51, 153)
-        pdf.rect(0, 0, 297, 20, 'F')
-        
-        pdf.set_font("Arial", 'B', 17)
-        pdf.set_text_color(255, 255, 255)
-        pdf.set_xy(0, 3)
-        pdf.cell(0, 14, txt=f"COMMERCIAL INSPECTION REPORT : {station_name.upper()} [{insp_type}]", ln=1, align='C')
-        
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp_b:
-            tmp_b.write(data['before'].getvalue())
-            path_b = tmp_b.name
+    if layout_mode == "Before & After Pairs (Comparison)":
+        for data in items_list:
+            pdf.add_page()
+            pdf.set_fill_color(248, 249, 250)
+            pdf.rect(0, 0, 297, 210, 'F')
             
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp_a:
-            tmp_a.write(data['after'].getvalue())
-            path_a = tmp_a.name
+            pdf.set_fill_color(0, 51, 153)
+            pdf.rect(0, 0, 297, 20, 'F')
+            pdf.set_font("Arial", 'B', 17)
+            pdf.set_text_color(255, 255, 255)
+            pdf.set_xy(0, 3)
+            pdf.cell(0, 14, txt=f"COMMERCIAL INSPECTION REPORT : {station_name.upper()} [{insp_type}]", ln=1, align='C')
             
-        pdf.set_line_width(0.8)
-        pdf.set_draw_color(50, 50, 50)
-        pdf.rect(15, 25, 125, 84, 'D')
-        pdf.image(path_b, x=15, y=25, w=125, h=84)
-        
-        pdf.set_fill_color(220, 53, 69) 
-        pdf.rect(15, 111, 125, 9, 'F')
-        pdf.set_xy(15, 111)
-        pdf.set_font("Arial", 'B', 13)
-        pdf.set_text_color(255, 255, 255)
-        pdf.cell(125, 9, txt="DEFICIENCY / BEFORE EVIDENCE", ln=1, align='C')
-        
-        if data['show_dt']:
-            pdf.set_xy(15, 121)
-            pdf.set_font("Arial", 'B', 9)
-            pdf.set_text_color(50, 50, 50)
-            pdf.cell(125, 5, txt=f"Date: {data['d_before']} | Time: {data['t_before']}", ln=1, align='C')
-        
-        pdf.set_line_width(0.8)
-        pdf.set_draw_color(50, 50, 50)
-        pdf.rect(155, 25, 125, 84, 'D')
-        pdf.image(path_a, x=155, y=25, w=125, h=84)
-        
-        pdf.set_fill_color(40, 167, 69) 
-        pdf.rect(155, 111, 125, 9, 'F')
-        pdf.set_xy(155, 111)
-        pdf.set_font("Arial", 'B', 13)
-        pdf.set_text_color(255, 255, 255)
-        pdf.cell(125, 9, txt=f"RECTIFIED / AFTER (Score: {data['ai_score']}/10)", ln=1, align='C')
-        
-        if data['show_dt']:
-            pdf.set_xy(155, 121)
-            pdf.set_font("Arial", 'B', 9)
-            pdf.set_text_color(50, 50, 50)
-            pdf.cell(125, 5, txt=f"Date: {data['d_after']} | Time: {data['t_after']}", ln=1, align='C')
-        
-        pdf.set_fill_color(225, 235, 245)
-        pdf.set_draw_color(0, 51, 153)
-        pdf.set_line_width(0.5)
-        pdf.rect(20, 131, 257, 11, 'DF')
-        
-        pdf.set_xy(0, 132)
-        pdf.set_font("Arial", 'B', 12)
-        pdf.set_text_color(0, 51, 153)
-        pdf.cell(0, 9, txt=f"Micro-Location: {data['location']}", ln=1, align='C')
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp_b:
+                tmp_b.write(data['before'].getvalue())
+                path_b = tmp_b.name
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp_a:
+                tmp_a.write(data['after'].getvalue())
+                path_a = tmp_a.name
+                
+            pdf.set_line_width(0.8)
+            pdf.set_draw_color(50, 50, 50)
+            pdf.rect(15, 25, 125, 84, 'D')
+            pdf.image(path_b, x=15, y=25, w=125, h=84)
+            pdf.set_fill_color(220, 53, 69) 
+            pdf.rect(15, 111, 125, 9, 'F')
+            pdf.set_xy(15, 111)
+            pdf.set_font("Arial", 'B', 13)
+            pdf.set_text_color(255, 255, 255)
+            pdf.cell(125, 9, txt="DEFICIENCY / BEFORE EVIDENCE", ln=1, align='C')
+            
+            pdf.set_line_width(0.8)
+            pdf.set_draw_color(50, 50, 50)
+            pdf.rect(155, 25, 125, 84, 'D')
+            pdf.image(path_a, x=155, y=25, w=125, h=84)
+            pdf.set_fill_color(40, 167, 69) 
+            pdf.rect(155, 111, 125, 9, 'F')
+            pdf.set_xy(155, 111)
+            pdf.set_font("Arial", 'B', 13)
+            pdf.set_text_color(255, 255, 255)
+            pdf.cell(125, 9, txt=f"RECTIFIED / AFTER (Score: {data['ai_score']}/10)", ln=1, align='C')
+            
+            pdf.set_fill_color(225, 235, 245)
+            pdf.set_draw_color(0, 51, 153)
+            pdf.set_line_width(0.5)
+            pdf.rect(20, 131, 257, 11, 'DF')
+            pdf.set_xy(0, 132)
+            pdf.set_font("Arial", 'B', 12)
+            pdf.set_text_color(0, 51, 153)
+            pdf.cell(0, 9, txt=f"Micro-Location: {data['location']}", ln=1, align='C')
 
-        if data['remarks']:
-            pdf.set_xy(20, 144)
-            pdf.set_font("Arial", 'B', 10)
-            pdf.set_text_color(50, 50, 50)
-            pdf.cell(257, 6, txt=f"CCI Observations: {data['remarks']}", ln=1, align='L')
+            if data['remarks']:
+                pdf.set_xy(20, 144)
+                pdf.set_font("Arial", 'B', 10)
+                pdf.set_text_color(50, 50, 50)
+                pdf.cell(257, 6, txt=f"CCI Observations: {data['remarks']}", ln=1, align='L')
+            if data['fine']:
+                pdf.set_xy(20, 152)
+                pdf.set_font("Arial", 'B', 10)
+                pdf.set_text_color(180, 0, 0)
+                pdf.cell(257, 6, txt=f"Fine Recommendation: {data['fine']}", ln=1, align='L')
             
-        if data['fine']:
-            pdf.set_xy(20, 152)
-            pdf.set_font("Arial", 'B', 10)
-            pdf.set_text_color(180, 0, 0)
-            pdf.cell(257, 6, txt=f"Fine Recommendation (Railway Board Rules): {data['fine']}", ln=1, align='L')
-        
-        # Digital Stamp & Signature Box
-        pdf.set_draw_color(0, 51, 153)
-        pdf.set_line_width(0.4)
-        pdf.rect(195, 167, 92, 22, 'D')
-        pdf.set_font("Arial", 'B', 8)
-        pdf.set_text_color(0, 51, 153)
-        pdf.set_xy(197, 168)
-        pdf.cell(88, 4, txt="[SUBMITTED TO SR. DCM FOR ORDERS]", ln=1, align='C')
-        pdf.set_font("Arial", 'B', 8)
-        pdf.set_text_color(50, 50, 50)
-        pdf.set_xy(197, 173)
-        pdf.cell(88, 4, txt="Manikant Choudhary, CCI / Solapur", ln=1, align='C')
-        pdf.set_font("Arial", '', 8)
-        pdf.set_xy(197, 178)
-        pdf.cell(88, 4, txt="Sr. DCM Office, Solapur Division, C.Rly.", ln=1, align='C')
-        
-        pdf.set_xy(15, 192)
-        pdf.set_font("Arial", 'I', 9)
-        pdf.set_text_color(100, 100, 100)
-        pdf.cell(170, 8, txt="Verified Evidence-Based Inspection | Central Railway - Solapur Division", ln=0, align='L')
-        
-        os.remove(path_b)
-        os.remove(path_a)
-        
+            pdf.set_draw_color(0, 51, 153)
+            pdf.set_line_width(0.4)
+            pdf.rect(195, 167, 92, 22, 'D')
+            pdf.set_font("Arial", 'B', 8)
+            pdf.set_text_color(0, 51, 153)
+            pdf.set_xy(197, 168)
+            pdf.cell(88, 4, txt="[SUBMITTED TO SR. DCM FOR ORDERS]", ln=1, align='C')
+            pdf.set_font("Arial", 'B', 8)
+            pdf.set_text_color(50, 50, 50)
+            pdf.set_xy(197, 173)
+            pdf.cell(88, 4, txt="Manikant Choudhary, CCI / Solapur", ln=1, align='C')
+            pdf.set_xy(197, 178)
+            pdf.cell(88, 4, txt="Sr. DCM Office, Solapur Division, C.Rly.", ln=1, align='C')
+            
+            pdf.set_xy(15, 192)
+            pdf.set_font("Arial", 'I', 9)
+            pdf.set_text_color(100, 100, 100)
+            pdf.cell(170, 8, txt="Verified Evidence-Based Inspection | Central Railway - Solapur Division", ln=0, align='L')
+            
+            os.remove(path_b)
+            os.remove(path_a)
+    else:
+        for data in items_list:
+            pdf.add_page()
+            pdf.set_fill_color(248, 249, 250)
+            pdf.rect(0, 0, 297, 210, 'F')
+            
+            pdf.set_fill_color(0, 51, 153)
+            pdf.rect(0, 0, 297, 20, 'F')
+            pdf.set_font("Arial", 'B', 17)
+            pdf.set_text_color(255, 255, 255)
+            pdf.set_xy(0, 3)
+            pdf.cell(0, 14, txt=f"COMMERCIAL INSPECTION REPORT : {station_name.upper()} [{insp_type}]", ln=1, align='C')
+            
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
+                tmp.write(data['img'].getvalue())
+                path_img = tmp.name
+                
+            pdf.set_line_width(0.8)
+            pdf.set_draw_color(50, 50, 50)
+            pdf.rect(60, 25, 177, 110, 'D')
+            pdf.image(path_img, x=60, y=25, w=177, h=110)
+            
+            pdf.set_fill_color(225, 235, 245)
+            pdf.set_draw_color(0, 51, 153)
+            pdf.set_line_width(0.5)
+            pdf.rect(20, 142, 257, 11, 'DF')
+            pdf.set_xy(0, 143)
+            pdf.set_font("Arial", 'B', 12)
+            pdf.set_text_color(0, 51, 153)
+            pdf.cell(0, 9, txt=f"Micro-Location: {data['location']} ({data['status'].upper()})", ln=1, align='C')
+
+            if data['remarks']:
+                pdf.set_xy(20, 156)
+                pdf.set_font("Arial", 'B', 10)
+                pdf.set_text_color(50, 50, 50)
+                pdf.cell(257, 6, txt=f"CCI Observations: {data['remarks']}", ln=1, align='L')
+            
+            pdf.set_draw_color(0, 51, 153)
+            pdf.set_line_width(0.4)
+            pdf.rect(195, 168, 92, 22, 'D')
+            pdf.set_font("Arial", 'B', 8)
+            pdf.set_text_color(0, 51, 153)
+            pdf.set_xy(197, 169)
+            pdf.cell(88, 4, txt="[SUBMITTED TO SR. DCM FOR ORDERS]", ln=1, align='C')
+            pdf.set_font("Arial", 'B', 8)
+            pdf.set_text_color(50, 50, 50)
+            pdf.set_xy(197, 174)
+            pdf.cell(88, 4, txt="Manikant Choudhary, CCI / Solapur", ln=1, align='C')
+            pdf.set_xy(197, 179)
+            pdf.cell(88, 4, txt="Sr. DCM Office, Solapur Division, C.Rly.", ln=1, align='C')
+            
+            pdf.set_xy(15, 192)
+            pdf.set_font("Arial", 'I', 9)
+            pdf.set_text_color(100, 100, 100)
+            pdf.cell(170, 8, txt="Verified Evidence-Based Inspection | Central Railway - Solapur Division", ln=0, align='L')
+            
+            os.remove(path_img)
+
     raw_output = pdf.output()
     if isinstance(raw_output, str):
         return raw_output.encode('latin1')
@@ -407,7 +498,9 @@ if app_mode == "🔍 Master Field Inspection & Evidence":
         ])
 
     st.markdown("---")
-    st.markdown("### 2. Upload Photographic Evidence (Before & After)")
+    st.markdown("### 2. Choose Assembly Mode & Upload Photos")
+    layout_mode = st.radio("Select Report Layout Style:", ["Before & After Pairs (Comparison)", "Individual / Single Photos (Flexible Evidence)"])
+    
     uploaded_files = st.file_uploader("Upload evidentiary photos (Zip or multiple files)", type=['zip', 'jpg', 'jpeg', 'png'], accept_multiple_files=True)
 
     if uploaded_files and station_input:
@@ -421,138 +514,128 @@ if app_mode == "🔍 Master Field Inspection & Evidence":
             else:
                 image_files.append({'name': uf.name, 'bytes': uf.read()})
                 
-        if len(image_files) >= 2:
-            with st.spinner("Processing GPS Geotag Evidence & Analysis..."):
+        if len(image_files) >= 1:
+            with st.spinner("Processing Photos & EXIF Data..."):
                 for item in image_files:
                     dt_obj, gps_info = get_image_info(item['bytes'], item['name'])
                     item['dt'] = dt_obj
                     item['date_val'] = dt_obj.date()
                     item['time_val'] = dt_obj.time()
                     item['gps'] = gps_info
-                    
-                    name_lower = item['name'].lower()
-                    if 'before' in name_lower or 'bfr' in name_lower:
-                        item['priority'] = 0
-                    elif 'after' in name_lower or 'aft' in name_lower:
-                        item['priority'] = 1
-                    else:
-                        item['priority'] = 2
-                
-                image_files.sort(key=lambda x: (x['dt'], x['priority'], x['name']))
-                st.success(f"✅ Total {len(image_files)} evidence photos verified.")
                 
                 with st.form("inspection_form"):
                     inputs = []
-                    for i in range(0, len(image_files)-1, 2):
-                        p_before = image_files[i]
-                        p_after = image_files[i+1]
-                        
-                        st.write("---")
-                        col1, col2, col3, col4 = st.columns([1, 1, 0.5, 1.5])
-                        
-                        with col3:
-                            st.write("\n")
-                            swap_photos = st.checkbox("🔄 Swap\nPair", key=f"swap_{i}")
-                            if swap_photos:
-                                p_before, p_after = p_after, p_before
-                        
-                        with col1:
-                            st.image(p_before['bytes'], caption=f"🔴 BEFORE ({p_before['gps']})", use_container_width=True)
-                        with col2:
-                            st.image(p_after['bytes'], caption=f"🟢 AFTER ({p_after['gps']})", use_container_width=True)
+                    if layout_mode == "Before & After Pairs (Comparison)":
+                        for i in range(0, len(image_files)-1, 2):
+                            p_before = image_files[i]
+                            p_after = image_files[i+1]
                             
-                        with col4:
-                            loc_choice = st.selectbox("👉 Select Location:", LOCATION_OPTIONS, key=f"loc_{i}")
-                            custom_loc = st.text_input("✍️ Or Custom Location:", key=f"custom_loc_{i}", placeholder="Type location if not listed...")
+                            st.write("---")
+                            col1, col2, col3, col4 = st.columns([1, 1, 0.5, 1.5])
+                            with col1:
+                                st.image(p_before['bytes'], caption=f"🔴 BEFORE ({p_before['gps']})", use_container_width=True)
+                            with col2:
+                                st.image(p_after['bytes'], caption=f"🟢 AFTER ({p_after['gps']})", use_container_width=True)
+                            with col3:
+                                st.write("\n")
+                                include_pair = st.checkbox("Include?", value=True, key=f"inc_{i}")
+                            with col4:
+                                loc_choice = st.selectbox("👉 Select Location:", LOCATION_OPTIONS, key=f"loc_{i}")
+                                custom_loc = st.text_input("✍️ Custom Location:", key=f"custom_loc_{i}", placeholder="Type if not listed...")
+                                remarks_input = st.text_input("💬 CCI Observations:", key=f"rem_{i}", placeholder="Deficiency noted...")
+                                fine_recommendation = st.text_input("⚖️ Fine Recommendation:", key=f"fine_{i}", placeholder="e.g. Rs. 5000/- penalty...")
                             
-                            dt_mode = st.selectbox(
-                                "🕒 Date & Time Mode:",
-                                ["Auto (Detected from EXIF/Name)", "Custom / Edit Date & Time", "Blank (No Date/Time)"],
-                                key=f"dt_mode_{i}"
-                            )
+                            inputs.append({
+                                'include': include_pair,
+                                'before': p_before,
+                                'after': p_after,
+                                'loc_key': f"loc_{i}",
+                                'custom_loc_key': f"custom_loc_{i}",
+                                'rem_key': f"rem_{i}",
+                                'fine_key': f"fine_{i}"
+                            })
+                    else:
+                        for i, img_item in enumerate(image_files):
+                            st.write("---")
+                            col1, col2, col3 = st.columns([1, 1, 2])
+                            with col1:
+                                st.image(img_item['bytes'], caption=f"📷 Photo #{i+1}", use_container_width=True)
+                            with col2:
+                                include_photo = st.checkbox("Include in Report?", value=True, key=f"inc_single_{i}")
+                                status_type = st.selectbox("Status:", ["Deficiency (Before)", "Rectified (After)", "General Observation"], key=f"status_{i}")
+                            with col3:
+                                loc_choice = st.selectbox("👉 Select Location:", LOCATION_OPTIONS, key=f"loc_s_{i}")
+                                custom_loc = st.text_input("✍️ Custom Location:", key=f"custom_loc_s_{i}", placeholder="Type location...")
+                                remarks_input = st.text_input("💬 CCI Observations / Fine Note:", key=f"rem_s_{i}", placeholder="Observations or penalty note...")
                             
-                            col_d, col_t = st.columns(2)
-                            with col_d:
-                                custom_date = st.date_input("Date:", value=p_before['date_val'], key=f"date_{i}")
-                            with col_t:
-                                custom_time = st.time_input("Time:", value=p_before['time_val'], key=f"time_{i}")
-                            
-                            remarks_input = st.text_input("💬 CCI Observations / Deficiencies:", key=f"rem_{i}", placeholder="e.g. Unhygienic condition / overcharging / lack of amenities")
-                            fine_recommendation = st.text_input("⚖️ Fine / Penalty Recommendation (Board Rules):", key=f"fine_{i}", placeholder="e.g. Recommend Rs. 5000/- fine under Catering/Commercial circular")
-                        
-                        inputs.append({
-                            'before': p_before,
-                            'after': p_after,
-                            'loc_key': f"loc_{i}",
-                            'custom_loc_key': f"custom_loc_{i}",
-                            'dt_mode_key': f"dt_mode_{i}",
-                            'date_key': f"date_{i}",
-                            'time_key': f"time_{i}",
-                            'rem_key': f"rem_{i}",
-                            'fine_key': f"fine_{i}"
-                        })
+                            inputs.append({
+                                'include': include_photo,
+                                'img': img_item,
+                                'status': status_type,
+                                'loc_key': f"loc_s_{i}",
+                                'custom_loc_key': f"custom_loc_s_{i}",
+                                'rem_key': f"rem_s_{i}"
+                            })
                     
                     st.write("---")
                     submit = st.form_submit_button("3. Generate Official Report for Sr. DCM Submission", type="primary")
                     
                 if submit:
                     with st.spinner("Generating Official PPT & PDF Reports..."):
-                        pairs_list = []
-                        for idx, item in enumerate(inputs):
-                            dropdown_val = st.session_state[item['loc_key']]
-                            custom_val = st.session_state[item['custom_loc_key']].strip()
-                            
-                            if custom_val:
-                                loc_name = custom_val
-                            elif dropdown_val != "-- Select Commercial/Amenity Location --":
-                                loc_name = dropdown_val
-                            else:
-                                loc_name = "Location Not Specified"
+                        final_items = []
+                        if layout_mode == "Before & After Pairs (Comparison)":
+                            for idx, item in enumerate(inputs):
+                                if not item['include']:
+                                    continue
+                                dropdown_val = st.session_state[item['loc_key']]
+                                custom_val = st.session_state[item['custom_loc_key']].strip()
+                                loc_name = custom_val if custom_val else (dropdown_val if dropdown_val != "-- Select Commercial/Amenity Location --" else "Location Not Specified")
+                                remarks_val = st.session_state.get(item['rem_key'], "").strip()
+                                fine_val = st.session_state.get(item['fine_key'], "").strip()
+                                ai_score = round(9.1 + (idx % 8) * 0.1, 1)
                                 
-                            mode = st.session_state[item['dt_mode_key']]
-                            
-                            if mode == "Blank (No Date/Time)":
-                                show_dt = False
-                                final_date, final_time = "", ""
-                            elif mode == "Auto (Detected from EXIF/Name)":
-                                show_dt = True
-                                final_date = item['before']['date_val'].strftime("%Y-%m-%d")
-                                final_time = item['before']['time_val'].strftime("%I:%M:%S %p")
-                            else:
-                                show_dt = True
-                                sel_date = st.session_state.get(item['date_key'], item['before']['date_val'])
-                                sel_time = st.session_state.get(item['time_key'], item['before']['time_val'])
-                                final_date = sel_date.strftime("%Y-%m-%d") if isinstance(sel_date, date) else str(sel_date)
-                                final_time = sel_time.strftime("%I:%M:%S %p") if isinstance(sel_time, time) else str(sel_time)
+                                final_items.append({
+                                    'before': process_image(item['before']['bytes']),
+                                    'after': process_image(item['after']['bytes']),
+                                    'show_dt': True,
+                                    'd_before': item['before']['date_val'].strftime("%Y-%m-%d"),
+                                    't_before': item['before']['time_val'].strftime("%I:%M:%S %p"),
+                                    'd_after': item['after']['date_val'].strftime("%Y-%m-%d"),
+                                    't_after': item['after']['time_val'].strftime("%I:%M:%S %p"),
+                                    'location': loc_name,
+                                    'remarks': remarks_val,
+                                    'fine': fine_val,
+                                    'ai_score': ai_score
+                                })
+                        else:
+                            for idx, item in enumerate(inputs):
+                                if not item['include']:
+                                    continue
+                                dropdown_val = st.session_state[item['loc_key']]
+                                custom_val = st.session_state[item['custom_loc_key']].strip()
+                                loc_name = custom_val if custom_val else (dropdown_val if dropdown_val != "-- Select Commercial/Amenity Location --" else "Location Not Specified")
+                                remarks_val = st.session_state.get(item['rem_key'], "").strip()
                                 
-                            remarks_val = st.session_state.get(item['rem_key'], "").strip()
-                            fine_val = st.session_state.get(item['fine_key'], "").strip()
-                            ai_score = round(9.1 + (idx % 8) * 0.1, 1)
-                                
-                            pairs_list.append({
-                                'before': process_image(item['before']['bytes']),
-                                'after': process_image(item['after']['bytes']),
-                                'show_dt': show_dt,
-                                'd_before': final_date,
-                                't_before': final_time,
-                                'd_after': final_date,
-                                't_after': final_time,
-                                'location': loc_name,
-                                'remarks': remarks_val,
-                                'fine': fine_val,
-                                'ai_score': ai_score
-                            })
+                                final_items.append({
+                                    'img': process_image(item['img']['bytes']),
+                                    'status': item['status'],
+                                    'location': loc_name,
+                                    'remarks': remarks_val
+                                })
                         
-                        save_inspection_to_db(station_input, inspection_type, datetime.now().strftime("%Y-%m-%d %H:%M"))
-                        
-                        st.session_state['ppt_data'] = create_ppt(station_input, inspection_type, pairs_list)
-                        st.session_state['pdf_data'] = create_pdf(station_input, inspection_type, pairs_list)
-                        st.session_state['report_ready'] = True
+                        if final_items:
+                            save_inspection_to_db(station_input, inspection_type, datetime.now().strftime("%Y-%m-%d %H:%M"))
+                            st.session_state['ppt_data'] = create_ppt(station_input, inspection_type, final_items, layout_mode)
+                            st.session_state['pdf_data'] = create_pdf(station_input, inspection_type, final_items, layout_mode)
+                            st.session_state['report_ready'] = True
+                            st.rerun()
+                        else:
+                            st.warning("⚠️ Please select at least one photo item to include in the report.")
+        else:
+            st.warning("Please upload at least 1 photo!")
 
-    # Safely display download buttons only when data exists in session state
     if st.session_state.get('report_ready') and 'pdf_data' in st.session_state and 'ppt_data' in st.session_state:
         st.success("🎉 Official Inspection Report Prepared Successfully by CCI Manikant Choudhary!")
-        
         current_time_str = datetime.now().strftime('%H%M%S')
         
         col_ppt, col_pdf = st.columns(2)
@@ -587,7 +670,6 @@ elif app_mode == "📝 Official Noting & Fine Proposal":
         d_content = st.text_area("Drafting Body (Noting / Proposal text):", height=220, value="Respected Sir,\n\nIn reference to the field inspection conducted by the undersigned (Manikant Choudhary, CCI) at Solapur division covering ticketing/catering/amenities, certain commercial deficiencies and discrepancies were observed as per photographic evidences.\n\nIn view of the guidelines issued by the Railway Board Commercial Directorate, imposing a penalty / fine of Rs. [...] is strongly recommended against the defaulting agency/contractor.\n\nSubmitted for kind perusal and necessary orders please.")
         
         d_submit = st.form_submit_button("Save & Export Official Noting", type="primary")
-        
         if d_submit and d_subject:
             save_letter_to_db(d_subject, d_recipient, d_content)
             st.success("✅ Official Noting saved successfully to database!")
