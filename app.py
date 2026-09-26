@@ -353,7 +353,7 @@ def create_pdf(station_name, insp_type, items_list, layout_mode):
             pdf.set_fill_color(220, 53, 69) 
             pdf.rect(15, 111, 125, 9, 'F')
             pdf.set_xy(15, 111)
-            pdf.set_font("Arial", 'B', 12)
+            pdf.set_font("Arial", 'B', 11)
             pdf.set_text_color(255, 255, 255)
             b_txt = "DEFICIENCY / BEFORE" + (f" [{data['d_before']} {data['t_before']}]" if data['show_dt'] else "")
             pdf.cell(125, 9, txt=b_txt, ln=1, align='C')
@@ -365,7 +365,7 @@ def create_pdf(station_name, insp_type, items_list, layout_mode):
             pdf.set_fill_color(40, 167, 69) 
             pdf.rect(155, 111, 125, 9, 'F')
             pdf.set_xy(155, 111)
-            pdf.set_font("Arial", 'B', 12)
+            pdf.set_font("Arial", 'B', 11)
             pdf.set_text_color(255, 255, 255)
             a_txt = f"RECTIFIED / AFTER (Score: {data['ai_score']}/10)" + (f" [{data['d_after']} {data['t_after']}]" if data['show_dt'] else "")
             pdf.cell(125, 9, txt=a_txt, ln=1, align='C')
@@ -588,10 +588,14 @@ if app_mode == "🔍 Master Field Inspection & Evidence":
                         col1, col2, col3, col4, col5 = st.columns([1, 1, 0.4, 0.8, 1.3])
                         with col1:
                             st.image(p_before['bytes'], caption=f"🔴 BEFORE ({p_before['gps']})", use_container_width=True)
-                            st.markdown(f"<small style='color:gray;'>📅 {p_before['date_val']} ⏰ {p_before['time_val'].strftime('%I:%M:%S %p')}</small>", unsafe_allow_html=True)
+                            # EDITABLE DATE & TIME FOR BEFORE PHOTO
+                            edit_date_b = st.date_input("📅 Date (Before):", value=p_before['date_val'], key=f"date_b_{i}")
+                            edit_time_b = st.time_input("⏰ Time (Before):", value=p_before['time_val'], key=f"time_b_{i}")
                         with col2:
                             st.image(p_after['bytes'], caption=f"🟢 AFTER ({p_after['gps']})", use_container_width=True)
-                            st.markdown(f"<small style='color:gray;'>📅 {p_after['date_val']} ⏰ {p_after['time_val'].strftime('%I:%M:%S %p')}</small>", unsafe_allow_html=True)
+                            # EDITABLE DATE & TIME FOR AFTER PHOTO
+                            edit_date_a = st.date_input("📅 Date (After):", value=p_after['date_val'], key=f"date_a_{i}")
+                            edit_time_a = st.time_input("⏰ Time (After):", value=p_after['time_val'], key=f"time_a_{i}")
                         with col3:
                             st.write("\n")
                             include_pair = st.checkbox("Inc?", value=True, key=f"inc_{i}")
@@ -611,6 +615,10 @@ if app_mode == "🔍 Master Field Inspection & Evidence":
                             'swap': swap_pair,
                             'before': p_before,
                             'after': p_after,
+                            'edit_date_b': edit_date_b,
+                            'edit_time_b': edit_time_b,
+                            'edit_date_a': edit_date_a,
+                            'edit_time_a': edit_time_a,
                             'loc_key': f"loc_{i}",
                             'custom_loc_key': f"custom_loc_{i}",
                             'rem_key': f"rem_{i}",
@@ -622,7 +630,9 @@ if app_mode == "🔍 Master Field Inspection & Evidence":
                         col1, col2, col3 = st.columns([1, 1.2, 1.8])
                         with col1:
                             st.image(img_item['bytes'], caption=f"📷 Photo #{i+1}", use_container_width=True)
-                            st.markdown(f"<small style='color:gray;'>📅 {img_item['date_val']} ⏰ {img_item['time_val'].strftime('%I:%M:%S %p')}</small>", unsafe_allow_html=True)
+                            # EDITABLE DATE & TIME FOR SINGLE PHOTO
+                            edit_date_s = st.date_input("📅 Date:", value=img_item['date_val'], key=f"date_s_{i}")
+                            edit_time_s = st.time_input("⏰ Time:", value=img_item['time_val'], key=f"time_s_{i}")
                         with col2:
                             include_photo = st.checkbox("Include in Report?", value=True, key=f"inc_single_{i}")
                             show_dt_single = st.checkbox("⏰ Show Date & Clock Stamp", value=True, key=f"dt_single_{i}")
@@ -636,6 +646,8 @@ if app_mode == "🔍 Master Field Inspection & Evidence":
                             'include': include_photo,
                             'show_dt': show_dt_single,
                             'img': img_item,
+                            'edit_date': edit_date_s,
+                            'edit_time': edit_time_s,
                             'status': status_type,
                             'loc_key': f"loc_s_{i}",
                             'custom_loc_key': f"custom_loc_s_{i}",
@@ -659,6 +671,12 @@ if app_mode == "🔍 Master Field Inspection & Evidence":
                                 img_b = item['after']['bytes'] if item['swap'] else item['before']['bytes']
                                 img_a = item['before']['bytes'] if item['swap'] else item['after']['bytes']
                                 
+                                # Use user edited date & time
+                                d_b_str = item['edit_date_b'].strftime("%Y-%m-%d")
+                                t_b_str = item['edit_time_b'].strftime("%I:%M:%S %p")
+                                d_a_str = item['edit_date_a'].strftime("%Y-%m-%d")
+                                t_a_str = item['edit_time_a'].strftime("%I:%M:%S %p")
+                                
                                 dropdown_val = st.session_state.get(item['loc_key'], '')
                                 custom_val = st.session_state.get(item['custom_loc_key'], '').strip()
                                 loc_name = custom_val if custom_val else (dropdown_val if dropdown_val != "-- Select Commercial/Amenity Location --" else "Location Not Specified")
@@ -670,10 +688,10 @@ if app_mode == "🔍 Master Field Inspection & Evidence":
                                     'before': process_image(img_b),
                                     'after': process_image(img_a),
                                     'show_dt': item['show_dt'],
-                                    'd_before': item['before']['date_val'].strftime("%Y-%m-%d"),
-                                    't_before': item['before']['time_val'].strftime("%I:%M:%S %p"),
-                                    'd_after': item['after']['date_val'].strftime("%Y-%m-%d"),
-                                    't_after': item['after']['time_val'].strftime("%I:%M:%S %p"),
+                                    'd_before': d_b_str,
+                                    't_before': t_b_str,
+                                    'd_after': d_a_str,
+                                    't_after': t_a_str,
                                     'location': loc_name,
                                     'remarks': remarks_val,
                                     'fine': fine_val,
@@ -692,8 +710,8 @@ if app_mode == "🔍 Master Field Inspection & Evidence":
                                     'img': process_image(item['img']['bytes']),
                                     'status': item['status'],
                                     'show_dt': item['show_dt'],
-                                    'date_str': item['img']['date_val'].strftime("%Y-%m-%d"),
-                                    'time_str': item['img']['time_val'].strftime("%I:%M:%S %p"),
+                                    'date_str': item['edit_date'].strftime("%Y-%m-%d"),
+                                    'time_str': item['edit_time'].strftime("%I:%M:%S %p"),
                                     'location': loc_name,
                                     'remarks': remarks_val
                                 })
