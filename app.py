@@ -269,61 +269,52 @@ def create_ppt(station_name, insp_type, items_list, layout_mode):
             pf.font.color.rgb = RGBColor(128, 128, 128)
             pf.alignment = PP_ALIGN.CENTER
     else:
-        # Single / Independent Photos Mode (2 photos per slide layout)
-        for i in range(0, len(items_list), 2):
-            slide = prs.slides.add_slide(prs.slide_layouts[5])
-            title_shape = slide.shapes.title
-            title_shape.text = f"Unit / Station: {station_name.upper()}"
-            title_shape.text_frame.paragraphs[0].font.size = Pt(26)
-            title_shape.text_frame.paragraphs[0].font.bold = True
-            title_shape.text_frame.paragraphs[0].font.color.rgb = RGBColor(0, 51, 153)
+        # STRICTLY 1 PHOTO PER SLIDE (Using blank layout index 6)
+        for idx, d1 in enumerate(items_list):
+            slide = prs.slides.add_slide(prs.slide_layouts[6])
             
-            # First photo on slide
-            d1 = items_list[i]
-            slide.shapes.add_picture(d1['img'], Inches(0.4), Inches(1.4), width=Inches(4.4), height=Inches(2.7))
-            tb1 = slide.shapes.add_textbox(Inches(0.4), Inches(4.2), Inches(4.4), Inches(1.5))
+            # Custom Header for Blank Slide
+            header_box = slide.shapes.add_textbox(Inches(0.5), Inches(0.4), Inches(9.0), Inches(0.8))
+            header_box.text_frame.word_wrap = True
+            hp = header_box.text_frame.paragraphs[0]
+            hp.text = f"UNIT / STATION: {station_name.upper()}"
+            hp.font.size = Pt(22)
+            hp.font.bold = True
+            hp.font.color.rgb = RGBColor(0, 51, 153)
+            
+            # Large centered photo (1 per slide)
+            slide.shapes.add_picture(d1['img'], Inches(1.5), Inches(1.3), width=Inches(7.0), height=Inches(3.8))
+            
+            tb1 = slide.shapes.add_textbox(Inches(0.5), Inches(5.2), Inches(9.0), Inches(1.5))
             tb1.text_frame.word_wrap = True
+            
             p1 = tb1.text_frame.paragraphs[0]
-            p1.text = f"📷 Evidence #{i+1} ({d1['status'].upper()})"
+            p1.text = f"📷 Evidence #{idx+1} — Status: {d1['status'].upper()}"
             p1.font.bold = True
             p1.font.size = Pt(13)
             p1.font.color.rgb = RGBColor(0, 51, 153)
             p1.alignment = PP_ALIGN.CENTER
             
             p1_loc = tb1.text_frame.add_paragraph()
-            p1_loc.text = f"Location: {d1['location']}"
+            p1_loc.text = f"Micro-Location: {d1['location']}"
             p1_loc.font.size = Pt(11)
+            p1_loc.font.bold = True
             p1_loc.alignment = PP_ALIGN.CENTER
             
             if d1['remarks']:
                 p1_rem = tb1.text_frame.add_paragraph()
-                p1_rem.text = f"Remarks: {d1['remarks']}"
-                p1_rem.font.size = Pt(10)
+                p1_rem.text = f"📝 CCI Observations: {d1['remarks']}"
+                p1_rem.font.size = Pt(11)
+                p1_rem.font.color.rgb = RGBColor(50, 50, 50)
                 p1_rem.alignment = PP_ALIGN.CENTER
 
-            # Second photo on slide (if available)
-            if i + 1 < len(items_list):
-                d2 = items_list[i+1]
-                slide.shapes.add_picture(d2['img'], Inches(5.2), Inches(1.4), width=Inches(4.4), height=Inches(2.7))
-                tb2 = slide.shapes.add_textbox(Inches(5.2), Inches(4.2), Inches(4.4), Inches(1.5))
-                tb2.text_frame.word_wrap = True
-                p2 = tb2.text_frame.paragraphs[0]
-                p2.text = f"📷 Evidence #{i+2} ({d2['status'].upper()})"
-                p2.font.bold = True
-                p2.font.size = Pt(13)
-                p2.font.color.rgb = RGBColor(0, 51, 153)
-                p2.alignment = PP_ALIGN.CENTER
-                
-                p2_loc = tb2.text_frame.add_paragraph()
-                p2_loc.text = f"Location: {d2['location']}"
-                p2_loc.font.size = Pt(11)
-                p2_loc.alignment = PP_ALIGN.CENTER
-                
-                if d2['remarks']:
-                    p2_rem = tb2.text_frame.add_paragraph()
-                    p2_rem.text = f"Remarks: {d2['remarks']}"
-                    p2_rem.font.size = Pt(10)
-                    p2_rem.alignment = PP_ALIGN.CENTER
+            footer = slide.shapes.add_textbox(Inches(0), Inches(7.0), Inches(10), Inches(0.4))
+            pf = footer.text_frame.paragraphs[0]
+            pf.text = "Submitted by Manikant Choudhary, CCI | Sr. DCM Office / Solapur Division"
+            pf.font.size = Pt(11)
+            pf.font.italic = True
+            pf.font.color.rgb = RGBColor(128, 128, 128)
+            pf.alignment = PP_ALIGN.CENTER
 
     ppt_io = io.BytesIO()
     prs.save(ppt_io)
@@ -418,6 +409,7 @@ def create_pdf(station_name, insp_type, items_list, layout_mode):
             os.remove(path_b)
             os.remove(path_a)
     else:
+        # STRICTLY 1 PHOTO PER PAGE (PDF Individual Mode)
         for data in items_list:
             pdf.add_page()
             pdf.set_fill_color(248, 249, 250)
@@ -436,36 +428,36 @@ def create_pdf(station_name, insp_type, items_list, layout_mode):
                 
             pdf.set_line_width(0.8)
             pdf.set_draw_color(50, 50, 50)
-            pdf.rect(60, 25, 177, 110, 'D')
-            pdf.image(path_img, x=60, y=25, w=177, h=110)
+            pdf.rect(60, 24, 177, 105, 'D')
+            pdf.image(path_img, x=60, y=24, w=177, h=105)
             
             pdf.set_fill_color(225, 235, 245)
             pdf.set_draw_color(0, 51, 153)
             pdf.set_line_width(0.5)
-            pdf.rect(20, 142, 257, 11, 'DF')
-            pdf.set_xy(0, 143)
-            pdf.set_font("Arial", 'B', 12)
+            pdf.rect(20, 134, 257, 10, 'DF')
+            pdf.set_xy(0, 135)
+            pdf.set_font("Arial", 'B', 11)
             pdf.set_text_color(0, 51, 153)
-            pdf.cell(0, 9, txt=f"Micro-Location: {data['location']} ({data['status'].upper()})", ln=1, align='C')
+            pdf.cell(0, 8, txt=f"Micro-Location: {data['location']} | Status: {data['status'].upper()}", ln=1, align='C')
 
             if data['remarks']:
-                pdf.set_xy(20, 156)
+                pdf.set_xy(20, 148)
                 pdf.set_font("Arial", 'B', 10)
                 pdf.set_text_color(50, 50, 50)
                 pdf.cell(257, 6, txt=f"CCI Observations: {data['remarks']}", ln=1, align='L')
             
             pdf.set_draw_color(0, 51, 153)
             pdf.set_line_width(0.4)
-            pdf.rect(195, 168, 92, 22, 'D')
+            pdf.rect(195, 163, 92, 22, 'D')
             pdf.set_font("Arial", 'B', 8)
             pdf.set_text_color(0, 51, 153)
-            pdf.set_xy(197, 169)
+            pdf.set_xy(197, 164)
             pdf.cell(88, 4, txt="[SUBMITTED TO SR. DCM FOR ORDERS]", ln=1, align='C')
             pdf.set_font("Arial", 'B', 8)
             pdf.set_text_color(50, 50, 50)
-            pdf.set_xy(197, 174)
+            pdf.set_xy(197, 169)
             pdf.cell(88, 4, txt="Manikant Choudhary, CCI / Solapur", ln=1, align='C')
-            pdf.set_xy(197, 179)
+            pdf.set_xy(197, 174)
             pdf.cell(88, 4, txt="Sr. DCM Office, Solapur Division, C.Rly.", ln=1, align='C')
             
             pdf.set_xy(15, 192)
