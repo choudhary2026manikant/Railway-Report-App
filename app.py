@@ -487,7 +487,7 @@ def create_pdf(station_name, insp_type, items_list, layout_mode):
         return bytes(raw_output)
     return raw_output
 
-def create_noting_pdf(subject, recipient, content, photo_bytes, location_str):
+def create_noting_pdf(subject, recipient, content, photos_list, location_str):
     pdf = FPDF('P', 'mm', 'A4')
     pdf.set_auto_page_break(True, margin=15)
     pdf.add_page()
@@ -514,20 +514,22 @@ def create_noting_pdf(subject, recipient, content, photo_bytes, location_str):
     pdf.set_text_color(20, 20, 20)
     pdf.multi_cell(180, 6, txt=content)
     
-    if photo_bytes:
+    if photos_list:
         pdf.ln(5)
         pdf.set_font("Arial", 'B', 10)
         pdf.set_text_color(0, 51, 153)
-        pdf.cell(0, 6, txt=f"Attached Evidence Photo [Location: {location_str}]:", ln=1)
+        pdf.cell(0, 6, txt=f"Attached Evidence Photos [Location: {location_str}]:", ln=1)
         
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp_n:
-            tmp_n.write(photo_bytes.getvalue())
-            path_n = tmp_n.name
+        for p_file in photos_list:
+            pdf.add_page()
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp_n:
+                tmp_n.write(p_file.read())
+                path_n = tmp_n.name
+            pdf.image(path_n, x=25, y=30, w=160, h=110)
+            os.remove(path_n)
+            pdf.ln(120)
             
-        pdf.image(path_n, x=45, y=pdf.get_y() + 2, w=120, h=80)
-        os.remove(path_n)
-        
-    pdf.ln(20)
+    pdf.ln(15)
     pdf.set_font("Arial", 'B', 10)
     pdf.set_text_color(0, 51, 153)
     pdf.cell(0, 5, txt="Submitted by:", ln=1, align='R')
@@ -820,7 +822,7 @@ if app_mode == "🔍 Master Field Inspection & Evidence":
 # ==================== APP MODE 2: NOTING & LETTER DRAFTING ====================
 elif app_mode == "📝 Official Noting & Fine Proposal":
     st.markdown("### 📝 Official Noting, Letter & Fine Proposal Drafting Module")
-    st.markdown("Office ke liye formal noting, letter aur penalty recommendation draft taiyar karein (साथ में साक्ष्य फोटो और रेलवे बोर्ड रूल रिफरेंस)।")
+    st.markdown("Office ke liye formal noting, letter aur penalty recommendation draft taiyar karein (साथ में **Bulk Evidentiary Photos** और रेलवे बोर्ड रूल रिफरेंस)।")
     
     with st.form("drafting_form"):
         d_subject = st.text_input("Subject / Title:", placeholder="e.g. Proposal for imposing penalty on catering/cleaning agency at Solapur station under Railway Board guidelines.")
@@ -830,16 +832,17 @@ elif app_mode == "📝 Official Noting & Fine Proposal":
         st.markdown("---")
         d_loc = st.selectbox("Select Evidence Location:", LOCATION_OPTIONS, key="noting_loc")
         d_fine_rule = st.selectbox("Select Railway Board Fine Rule:", FINE_PRESETS, key="noting_fine_rule")
-        d_photo = st.file_uploader("Upload Supporting Evidence Photo for Noting:", type=['jpg', 'jpeg', 'png'])
+        
+        # BULK PHOTO UPLOADER FOR NOTING
+        d_photos = st.file_uploader("📂 Upload Supporting Evidence Photos (Multiple photos allowed):", type=['jpg', 'jpeg', 'png'], accept_multiple_files=True, key="noting_bulk_photos")
         
         d_submit = st.form_submit_button("Save & Generate Official Noting PDF", type="primary")
         
         if d_submit and d_subject:
             save_letter_to_db(d_subject, d_recipient, d_content)
             loc_str = d_loc if d_loc != "-- Select Commercial/Amenity Location --" else "Solapur Division Area"
-            photo_io = io.BytesIO(d_photo.read()) if d_photo else None
             
-            st.session_state['noting_pdf'] = create_noting_pdf(d_subject, d_recipient, d_content, photo_io, loc_str)
+            st.session_state['noting_pdf'] = create_noting_pdf(d_subject, d_recipient, d_content, d_photos, loc_str)
             st.session_state['noting_ready'] = True
             st.success("✅ Official Noting saved & PDF generated successfully!")
 
@@ -951,14 +954,12 @@ elif app_mode == "🌐 Railway Board Circular Directory":
                 with urllib.request.urlopen(req, timeout=10) as response:
                     html_content = response.read().decode('utf-8', errors='ignore')
                 
-                # Extract PDF links or titles using regex
                 pdf_links = re.findall(r'href=["\']([^"\']*\.pdf)["\']', html_content, re.IGNORECASE)
                 
                 st.success(f"✅ Successfully connected to Railway Board Directorate! Found **{len(pdf_links)}** circular PDF references.")
                 st.session_state['fetched_pdf_links'] = pdf_links
             except Exception as e:
                 st.warning(f"⚠️ Live fetch warning (Network/Firewall restriction on cloud): {e}")
-                # Fallback pre-populated official commercial circulars for uninterrupted workflow
                 st.session_state['fetched_pdf_links'] = [
                     "https://indianrailways.gov.in/railwayboard/uploads/directorate/commercial/cc2026/CC_08_2026.pdf",
                     "https://indianrailways.gov.in/railwayboard/uploads/directorate/commercial/cc2026/CC_07_2026.pdf",
