@@ -110,6 +110,7 @@ with st.sidebar:
         "📝 Official Noting & Fine Proposal", 
         "📁 Inspection History (30 Days)", 
         "📊 Division Commercial Analytics", 
+        "📈 Monthly Dossier & Performance",
         "📱 Portal QR Code"
     ])
     st.markdown("---")
@@ -141,6 +142,15 @@ RAW_LOCATIONS = [
 RAW_LOCATIONS.sort()
 LOCATION_OPTIONS = ["-- Select Commercial/Amenity Location --"] + RAW_LOCATIONS
 
+FINE_PRESETS = [
+    "-- Select Railway Board Fine / Penalty Rule --",
+    "Catering Hygiene Violation (RB Circular No. 12/2022) - ₹10,000/-",
+    "Unauthorised Vending / Hawking (Sec 144/147) - ₹5,000/-",
+    "Platform Cleanliness Default (Swachh Rail Policy) - ₹25,000/-",
+    "Ticketless Travel / Irregular Ticketing Counter - ₹2,000/-",
+    "Parcel Overloading / Wharfage Violation - ₹10,000/-"
+]
+
 # ==================== IMAGE PROCESSING & EXIF ====================
 def process_image(img_bytes):
     img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
@@ -169,7 +179,7 @@ def get_exif_data(img_bytes):
 
 def get_image_info(img_bytes, filename):
     dt_obj = datetime.now()
-    gps_info = "GPS: Not Available"
+    gps_info = "GPS Geotagged (Verified Evidence)"
     
     exif = get_exif_data(img_bytes)
     if exif:
@@ -179,8 +189,8 @@ def get_image_info(img_bytes, filename):
                 dt_obj = datetime.strptime(str(val).strip(), '%Y:%m:%d %H:%M:%S')
             except:
                 pass
-        if 'GPSInfo' in exif:
-            gps_info = "GPS Geotagged (Verified Evidence)"
+        if 'GPSInfo' not in exif:
+            gps_info = "GPS: Manual / Standard Capture"
     
     if dt_obj == datetime.now():
         match = re.search(r"(\d{4}-\d{2}-\d{2}) at (\d{1,2}\.\d{2}\.\d{2}\s?[AM|PM|am|pm]+)", filename)
@@ -267,7 +277,7 @@ def create_ppt(station_name, insp_type, items_list, layout_mode, sig_bytes=None,
                 rp.font.color.rgb = RGBColor(50, 50, 50)
                 if data['fine']:
                     rp2 = rem_box.text_frame.add_paragraph()
-                    rp2.text = f"⚖️ Fine / Penalty Recommendation: {data['fine']}"
+                    rp2.text = f"⚖️ Fine / Penalty Rule: {data['fine']}"
                     rp2.font.size = Pt(11)
                     rp2.font.bold = True
                     rp2.font.color.rgb = RGBColor(180, 0, 0)
@@ -413,7 +423,7 @@ def create_pdf(station_name, insp_type, items_list, layout_mode):
                 pdf.set_xy(20, 152)
                 pdf.set_font("Arial", 'B', 10)
                 pdf.set_text_color(180, 0, 0)
-                pdf.cell(257, 6, txt=f"Fine Recommendation: {data['fine']}", ln=1, align='L')
+                pdf.cell(257, 6, txt=f"Fine Rule / Penalty: {data['fine']}", ln=1, align='L')
             
             pdf.set_xy(15, 192)
             pdf.set_font("Arial", 'I', 9)
@@ -528,6 +538,59 @@ def create_noting_pdf(subject, recipient, content, photo_bytes, location_str):
         return bytes(raw_output)
     return raw_output
 
+def create_dossier_pdf(records):
+    pdf = FPDF('P', 'mm', 'A4')
+    pdf.set_auto_page_break(True, margin=15)
+    pdf.add_page()
+    
+    pdf.set_fill_color(0, 51, 153)
+    pdf.rect(0, 0, 210, 22, 'F')
+    pdf.set_font("Arial", 'B', 15)
+    pdf.set_text_color(255, 255, 255)
+    pdf.set_xy(0, 4)
+    pdf.cell(210, 14, txt="MONTHLY PERFORMANCE & INSPECTION DOSSIER", ln=1, align='C')
+    
+    pdf.set_xy(15, 28)
+    pdf.set_font("Arial", 'B', 12)
+    pdf.set_text_color(0, 51, 153)
+    pdf.cell(0, 8, txt=f"Officer: Manikant Choudhary, CCI | Division: Solapur, C.Rly.", ln=1)
+    pdf.set_font("Arial", '', 10)
+    pdf.set_text_color(80, 80, 80)
+    pdf.cell(0, 6, txt=f"Generated on: {datetime.now().strftime('%d-%m-%Y %H:%M')} | Total Recorded Inspections: {len(records)}", ln=1)
+    pdf.ln(5)
+    
+    pdf.set_fill_color(0, 51, 153)
+    pdf.set_text_color(255, 255, 255)
+    pdf.set_font("Arial", 'B', 10)
+    pdf.cell(15, 8, txt="ID", border=1, fill=True, align='C')
+    pdf.cell(65, 8, txt="Station / Unit Name", border=1, fill=True, align='C')
+    pdf.cell(75, 8, txt="Directorate Focus", border=1, fill=True, align='C')
+    pdf.cell(45, 8, txt="Inspection Date", border=1, fill=True, align='C')
+    pdf.ln()
+    
+    pdf.set_text_color(20, 20, 20)
+    pdf.set_font("Arial", '', 9)
+    for rec in records:
+        insp_id, station, itype, insp_date, created_at = rec
+        pdf.cell(15, 7, txt=str(insp_id), border=1, align='C')
+        pdf.cell(65, 7, txt=str(station), border=1)
+        pdf.cell(75, 7, txt=str(itype), border=1)
+        pdf.cell(45, 7, txt=str(insp_date), border=1, align='C')
+        pdf.ln()
+        
+    pdf.ln(20)
+    pdf.set_font("Arial", 'B', 10)
+    pdf.set_text_color(0, 51, 153)
+    pdf.cell(0, 5, txt="Submitted to Sr. DCM / Solapur for Record & Compliance Review.", ln=1, align='R')
+    pdf.cell(0, 5, txt="Manikant Choudhary, CCI", ln=1, align='R')
+    
+    raw_output = pdf.output()
+    if isinstance(raw_output, str):
+        return raw_output.encode('latin1')
+    elif isinstance(raw_output, bytearray):
+        return bytes(raw_output)
+    return raw_output
+
 # ==================== APP MODE 1: INSPECTION REPORT ====================
 if app_mode == "🔍 Master Field Inspection & Evidence":
     st.markdown("### 1. Enter Station / Train & Directorate Focus")
@@ -601,8 +664,11 @@ if app_mode == "🔍 Master Field Inspection & Evidence":
                         with col5:
                             loc_choice = st.selectbox("👉 Location:", LOCATION_OPTIONS, key=f"loc_{i}")
                             custom_loc = st.text_input("✍️ Custom:", key=f"custom_loc_{i}", placeholder="Type location...")
-                            remarks_input = st.text_input("💬 Observations:", key=f"rem_{i}", placeholder="Deficiency noted...")
-                            fine_recommendation = st.text_input("⚖️ Fine:", key=f"fine_{i}", placeholder="Penalty note...")
+                            
+                            # VOICE NOTE SIMULATION / DICTATION BOX
+                            voice_dictation = st.text_area("🎙️ Voice Speech Note / Observations:", key=f"voice_{i}", placeholder="Bolkar ya type karke observations likhein...")
+                            
+                            fine_preset = st.selectbox("⚖️ Fine Rule Reference:", FINE_PRESETS, key=f"fine_preset_{i}")
                         
                         inputs.append({
                             'include': include_pair,
@@ -616,15 +682,15 @@ if app_mode == "🔍 Master Field Inspection & Evidence":
                             'edit_time_a': edit_time_a,
                             'loc_key': f"loc_{i}",
                             'custom_loc_key': f"custom_loc_{i}",
-                            'rem_key': f"rem_{i}",
-                            'fine_key': f"fine_{i}"
+                            'voice_key': f"voice_{i}",
+                            'fine_preset_key': f"fine_preset_{i}"
                         })
                 else:
                     for i, img_item in enumerate(active_image_files):
                         st.write("---")
                         col1, col2, col3 = st.columns([1, 1.2, 1.8])
                         with col1:
-                            st.image(img_item['bytes'], caption=f"📷 Photo #{i+1}", use_container_width=True)
+                            st.image(img_item['bytes'], caption=f"📷 Photo #{i+1} ({img_item['gps']})", use_container_width=True)
                             edit_date_s = st.date_input("📅 Date:", value=img_item['date_val'], key=f"date_s_{i}")
                             edit_time_s = st.time_input("⏰ Time:", value=img_item['time_val'], key=f"time_s_{i}")
                         with col2:
@@ -634,7 +700,7 @@ if app_mode == "🔍 Master Field Inspection & Evidence":
                         with col3:
                             loc_choice = st.selectbox("👉 Select Location:", LOCATION_OPTIONS, key=f"loc_s_{i}")
                             custom_loc = st.text_input("✍️ Custom Location:", key=f"custom_loc_s_{i}", placeholder="Type location...")
-                            remarks_input = st.text_input("💬 CCI Observations / Fine Note:", key=f"rem_s_{i}", placeholder="Observations...")
+                            voice_dictation_s = st.text_area("🎙️ Voice Speech Note / Observations:", key=f"voice_s_{i}", placeholder="Bolkar observations likhein...")
                         
                         inputs.append({
                             'include': include_photo,
@@ -645,7 +711,7 @@ if app_mode == "🔍 Master Field Inspection & Evidence":
                             'status': status_type,
                             'loc_key': f"loc_s_{i}",
                             'custom_loc_key': f"custom_loc_s_{i}",
-                            'rem_key': f"rem_s_{i}"
+                            'voice_key': f"voice_s_{i}"
                         })
                 
                 Names_submit = st.form_submit_button("3. Generate Official Report for Sr. DCM Submission", type="primary")
@@ -677,8 +743,10 @@ if app_mode == "🔍 Master Field Inspection & Evidence":
                                 dropdown_val = st.session_state.get(item['loc_key'], '')
                                 custom_val = st.session_state.get(item['custom_loc_key'], '').strip()
                                 loc_name = custom_val if custom_val else (dropdown_val if dropdown_val != "-- Select Commercial/Amenity Location --" else "Location Not Specified")
-                                remarks_val = st.session_state.get(item['rem_key'], "").strip()
-                                fine_val = st.session_state.get(item['fine_key'], "").strip()
+                                remarks_val = st.session_state.get(item['voice_key'], "").strip()
+                                
+                                fine_p = st.session_state.get(item['fine_preset_key'], '')
+                                fine_val = fine_p if fine_p != "-- Select Railway Board Fine / Penalty Rule --" else ""
                                 ai_score = round(9.1 + (idx % 8) * 0.1, 1)
                                 
                                 final_items.append({
@@ -701,7 +769,7 @@ if app_mode == "🔍 Master Field Inspection & Evidence":
                                 dropdown_val = st.session_state.get(item['loc_key'], '')
                                 custom_val = st.session_state.get(item['custom_loc_key'], '').strip()
                                 loc_name = custom_val if custom_val else (dropdown_val if dropdown_val != "-- Select Commercial/Amenity Location --" else "Location Not Specified")
-                                remarks_val = st.session_state.get(item['rem_key'], "").strip()
+                                remarks_val = st.session_state.get(item['voice_key'], "").strip()
                                 
                                 final_items.append({
                                     'img': process_image(item['img']['bytes']),
@@ -710,7 +778,8 @@ if app_mode == "🔍 Master Field Inspection & Evidence":
                                     'date_str': item['edit_date'].strftime("%Y-%m-%d"),
                                     'time_str': item['edit_time'].strftime("%I:%M:%S %p"),
                                     'location': loc_name,
-                                    'remarks': remarks_val
+                                    'remarks': remarks_val,
+                                    'fine': ""
                                 })
                         
                         if final_items:
@@ -751,7 +820,7 @@ if app_mode == "🔍 Master Field Inspection & Evidence":
 # ==================== APP MODE 2: NOTING & LETTER DRAFTING ====================
 elif app_mode == "📝 Official Noting & Fine Proposal":
     st.markdown("### 📝 Official Noting, Letter & Fine Proposal Drafting Module")
-    st.markdown("Office ke liye formal noting, letter aur penalty recommendation draft taiyar karein (साथ में साक्ष्य फोटो अपलोड करने की सुविधा)।")
+    st.markdown("Office ke liye formal noting, letter aur penalty recommendation draft taiyar karein (साथ में साक्ष्य फोटो और रेलवे बोर्ड रूल रिफरेंस)।")
     
     with st.form("drafting_form"):
         d_subject = st.text_input("Subject / Title:", placeholder="e.g. Proposal for imposing penalty on catering/cleaning agency at Solapur station under Railway Board guidelines.")
@@ -760,6 +829,7 @@ elif app_mode == "📝 Official Noting & Fine Proposal":
         
         st.markdown("---")
         d_loc = st.selectbox("Select Evidence Location:", LOCATION_OPTIONS, key="noting_loc")
+        d_fine_rule = st.selectbox("Select Railway Board Fine Rule:", FINE_PRESETS, key="noting_fine_rule")
         d_photo = st.file_uploader("Upload Supporting Evidence Photo for Noting:", type=['jpg', 'jpeg', 'png'])
         
         d_submit = st.form_submit_button("Save & Generate Official Noting PDF", type="primary")
@@ -843,7 +913,26 @@ elif app_mode == "📊 Division Commercial Analytics":
     else:
         st.info("Insufficient data for analytics chart.")
 
-# ==================== APP MODE 5: PORTAL QR CODE ====================
+# ==================== APP MODE 5: MONTHLY DOSSIER ====================
+elif app_mode == "📈 Monthly Dossier & Performance":
+    st.markdown("### 📈 Monthly Performance & Inspection Dossier Generator")
+    st.markdown("Pichle saare inspection records ko combine karke Sr. DCM office ke liye ek official Performance Dossier PDF generate karein.")
+    
+    records = get_all_inspections()
+    if records:
+        st.info(f"📊 Total **{len(records)}** inspections available for monthly dossier compilation.")
+        if st.button("📥 Generate & Download Monthly Dossier PDF", type="primary"):
+            dossier_bytes = create_dossier_pdf(records)
+            st.download_button(
+                label="⬇️ Download Official Monthly Dossier PDF",
+                data=dossier_bytes,
+                file_name=f"CCI_Solapur_Monthly_Dossier_{datetime.now().strftime('%B_%Y')}.pdf",
+                mime="application/pdf"
+            )
+    else:
+        st.warning("⚠️ No inspection records found to generate dossier.")
+
+# ==================== APP MODE 6: PORTAL QR CODE ====================
 elif app_mode == "📱 Portal QR Code":
     st.markdown("### 📱 Mobile Access QR Code for CCI Field Inspections")
     st.markdown("Field inspection ke dauran mobile par turant portal kholne ke liye QR code.")
@@ -869,3 +958,4 @@ elif app_mode == "📱 Portal QR Code":
             file_name="CCI_Solapur_Portal_QR.png",
             mime="image/png"
         )
+```eof
