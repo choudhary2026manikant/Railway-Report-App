@@ -527,7 +527,8 @@ if app_mode == "🔍 Master Field Inspection & Evidence":
     st.markdown("### 1. Enter Station / Train & Directorate Focus")
     col_s1, col_s2 = st.columns(2)
     with col_s1:
-        station_input = st.text_input("Station / Train No. & Name:", placeholder="e.g. Solapur Station / Train 11026")
+        station_input = st.text_input("Station / Train No. & Name:", value=st.session_state.get('station_input', ''), placeholder="e.g. Solapur Station / Train 11026", key='station_input_field')
+        st.session_state['station_input'] = station_input
     with col_s2:
         inspection_type = st.selectbox("Commercial Directorate Focus:", [
             "Ticketing & Booking (PRS/UTS/ATVM)", 
@@ -535,13 +536,13 @@ if app_mode == "🔍 Master Field Inspection & Evidence":
             "Catering & Vending Units (Stalls/Pantry/Rail Neer)", 
             "Parcel & Goods Shed Operations", 
             "Station Cleaning & Track Sanitation"
-        ])
+        ], key='inspection_type_field')
 
     st.markdown("---")
     st.markdown("### 2. Choose Assembly Mode & Bulk Upload Photos")
-    layout_mode = st.radio("Select Report Layout Style:", ["Before & After Pairs (Comparison)", "Individual / Single Photos (Flexible Evidence)"])
+    layout_mode = st.radio("Select Report Layout Style:", ["Before & After Pairs (Comparison)", "Individual / Single Photos (Flexible Evidence)"], key='layout_mode_field')
     
-    uploaded_files = st.file_uploader("Upload Bulk Evidentiary Photos (Select multiple JPG/PNG/ZIP files at once):", type=['zip', 'jpg', 'jpeg', 'png'], accept_multiple_files=True)
+    uploaded_files = st.file_uploader("Upload Bulk Evidentiary Photos (Select multiple JPG/PNG/ZIP files at once):", type=['zip', 'jpg', 'jpeg', 'png'], accept_multiple_files=True, key='bulk_uploader')
 
     if uploaded_files:
         image_files = []
@@ -622,8 +623,8 @@ if app_mode == "🔍 Master Field Inspection & Evidence":
                     submit = st.form_submit_button("3. Generate Official Report for Sr. DCM Submission", type="primary")
                     
                 if submit:
-                    if not station_input.strip():
-                        st.error("⚠️ Please enter Station / Train No. & Name before generating report!")
+                    if not st.session_state.get('station_input', '').strip():
+                        st.error("⚠️ Please enter Station / Train No. & Name above before generating report!")
                     else:
                         with st.spinner("Generating Official PPT & PDF Reports..."):
                             final_items = []
@@ -668,9 +669,10 @@ if app_mode == "🔍 Master Field Inspection & Evidence":
                                     })
                             
                             if final_items:
-                                save_inspection_to_db(station_input, inspection_type, datetime.now().strftime("%Y-%m-%d %H:%M"))
-                                st.session_state['ppt_data'] = create_ppt(station_input, inspection_type, final_items, layout_mode)
-                                st.session_state['pdf_data'] = create_pdf(station_input, inspection_type, final_items, layout_mode)
+                                st_name = st.session_state.get('station_input', 'Station')
+                                save_inspection_to_db(st_name, inspection_type, datetime.now().strftime("%Y-%m-%d %H:%M"))
+                                st.session_state['ppt_data'] = create_ppt(st_name, inspection_type, final_items, layout_mode)
+                                st.session_state['pdf_data'] = create_pdf(st_name, inspection_type, final_items, layout_mode)
                                 st.session_state['report_ready'] = True
                                 st.success("🎉 Official Inspection Report Prepared Successfully!")
                             else:
@@ -679,26 +681,27 @@ if app_mode == "🔍 Master Field Inspection & Evidence":
     if st.session_state.get('report_ready') and 'pdf_data' in st.session_state and 'ppt_data' in st.session_state:
         st.success("✅ Reports are ready for download below:")
         current_time_str = datetime.now().strftime('%H%M%S')
+        st_display_name = st.session_state.get('station_input', 'Inspection')
         
         col_ppt, col_pdf = st.columns(2)
         with col_ppt:
             st.download_button(
                 label="⬇️ Download PowerPoint Report (.pptx)", 
                 data=st.session_state['ppt_data'], 
-                file_name=f"CCI_Inspection_Report_{current_time_str}.pptx",
+                file_name=f"CCI_{st_display_name}_Report_{current_time_str}.pptx",
                 mime="application/vnd.openxmlformats-officedocument.presentationml.presentation"
             )
         with col_pdf:
             st.download_button(
                 label="📥 Download Official PDF Report for Sr. DCM", 
                 data=st.session_state['pdf_data'], 
-                file_name=f"CCI_DCM_Submission_{current_time_str}.pdf",
+                file_name=f"CCI_{st_display_name}_DCM_Submission_{current_time_str}.pdf",
                 mime="application/pdf"
             )
         
         st.markdown("---")
         st.markdown("### 📲 Direct WhatsApp Share with Sr. DCM Office")
-        wa_msg = urllib.parse.quote("Respected Sir, Inspection Report has been prepared by Manikant Choudhary, CCI / Solapur and is ready for submission.")
+        wa_msg = urllib.parse.quote(f"Respected Sir, Inspection Report for {st_display_name} has been prepared by Manikant Choudhary, CCI / Solapur and is ready for submission.")
         st.markdown(f'<a href="https://api.whatsapp.com/send?text={wa_msg}" target="_blank"><button style="background-color:#25D366;color:white;padding:10px 20px;border:none;border-radius:5px;font-size:16px;cursor:pointer;">💬 Share on WhatsApp</button></a>', unsafe_allow_html=True)
 
 # ==================== APP MODE 2: NOTING & LETTER DRAFTING ====================
