@@ -273,7 +273,6 @@ def create_ppt(station_name, insp_type, items_list, layout_mode):
         for idx, d1 in enumerate(items_list):
             slide = prs.slides.add_slide(prs.slide_layouts[6])
             
-            # Custom Header for Blank Slide
             header_box = slide.shapes.add_textbox(Inches(0.5), Inches(0.4), Inches(9.0), Inches(0.8))
             header_box.text_frame.word_wrap = True
             hp = header_box.text_frame.paragraphs[0]
@@ -282,7 +281,6 @@ def create_ppt(station_name, insp_type, items_list, layout_mode):
             hp.font.bold = True
             hp.font.color.rgb = RGBColor(0, 51, 153)
             
-            # Large centered photo (1 per slide)
             slide.shapes.add_picture(d1['img'], Inches(1.5), Inches(1.3), width=Inches(7.0), height=Inches(3.8))
             
             tb1 = slide.shapes.add_textbox(Inches(0.5), Inches(5.2), Inches(9.0), Inches(1.5))
@@ -474,6 +472,60 @@ def create_pdf(station_name, insp_type, items_list, layout_mode):
         return bytes(raw_output)
     return raw_output
 
+def create_noting_pdf(subject, recipient, content, photo_bytes, location_str):
+    pdf = FPDF('P', 'mm', 'A4')
+    pdf.set_auto_page_break(True, margin=15)
+    pdf.add_page()
+    
+    pdf.set_fill_color(0, 51, 153)
+    pdf.rect(0, 0, 210, 20, 'F')
+    pdf.set_font("Arial", 'B', 15)
+    pdf.set_text_color(255, 255, 255)
+    pdf.set_xy(0, 3)
+    pdf.cell(210, 14, txt="CENTRAL RAILWAY — SOLAPUR DIVISION", ln=1, align='C')
+    
+    pdf.set_xy(15, 25)
+    pdf.set_font("Arial", 'B', 11)
+    pdf.set_text_color(0, 51, 153)
+    pdf.cell(0, 6, txt=f"To: {recipient}", ln=1)
+    
+    pdf.set_xy(15, 33)
+    pdf.set_font("Arial", 'B', 11)
+    pdf.set_text_color(50, 50, 50)
+    pdf.multi_cell(180, 6, txt=f"Subject: {subject}")
+    
+    pdf.set_xy(15, pdf.get_y() + 4)
+    pdf.set_font("Arial", '', 10)
+    pdf.set_text_color(20, 20, 20)
+    pdf.multi_cell(180, 6, txt=content)
+    
+    if photo_bytes:
+        pdf.ln(5)
+        pdf.set_font("Arial", 'B', 10)
+        pdf.set_text_color(0, 51, 153)
+        pdf.cell(0, 6, txt=f"Attached Evidence Photo [Location: {location_str}]:", ln=1)
+        
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp_n:
+            tmp_n.write(photo_bytes.getvalue())
+            path_n = tmp_n.name
+            
+        pdf.image(path_n, x=45, y=pdf.get_y() + 2, w=120, h=80)
+        os.remove(path_n)
+        
+    pdf.ln(90)
+    pdf.set_font("Arial", 'B', 10)
+    pdf.set_text_color(0, 51, 153)
+    pdf.cell(0, 5, txt="Submitted by:", ln=1, align='R')
+    pdf.cell(0, 5, txt="Manikant Choudhary, CCI / Solapur", ln=1, align='R')
+    pdf.cell(0, 5, txt="Sr. DCM Office, Central Railway", ln=1, align='R')
+    
+    raw_output = pdf.output()
+    if isinstance(raw_output, str):
+        return raw_output.encode('latin1')
+    elif isinstance(raw_output, bytearray):
+        return bytes(raw_output)
+    return raw_output
+
 # ==================== APP MODE 1: INSPECTION REPORT ====================
 if app_mode == "🔍 Master Field Inspection & Evidence":
     st.markdown("### 1. Enter Station / Train & Directorate Focus")
@@ -654,20 +706,35 @@ if app_mode == "🔍 Master Field Inspection & Evidence":
 # ==================== APP MODE 2: NOTING & LETTER DRAFTING ====================
 elif app_mode == "📝 Official Noting & Fine Proposal":
     st.markdown("### 📝 Official Noting, Letter & Fine Proposal Drafting Module")
-    st.markdown("Office ke liye formal noting, letter aur penalty recommendation draft taiyar karein.")
+    st.markdown("Office ke liye formal noting, letter aur penalty recommendation draft taiyar karein (साथ में साक्ष्य फोटो अपलोड करने की सुविधा)।")
     
     with st.form("drafting_form"):
         d_subject = st.text_input("Subject / Title:", placeholder="e.g. Proposal for imposing penalty on catering/cleaning agency at Solapur station under Railway Board guidelines.")
         d_recipient = st.text_input("Addressed To:", value="Sr. Divisional Commercial Manager (Sr. DCM), Central Railway, Solapur")
-        d_content = st.text_area("Drafting Body (Noting / Proposal text):", height=220, value="Respected Sir,\n\nIn reference to the field inspection conducted by the undersigned (Manikant Choudhary, CCI) at Solapur division covering ticketing/catering/amenities, certain commercial deficiencies and discrepancies were observed as per photographic evidences.\n\nIn view of the guidelines issued by the Railway Board Commercial Directorate, imposing a penalty / fine of Rs. [...] is strongly recommended against the defaulting agency/contractor.\n\nSubmitted for kind perusal and necessary orders please.")
+        d_content = st.text_area("Drafting Body (Noting / Proposal text):", height=200, value="Respected Sir,\n\nIn reference to the field inspection conducted by the undersigned (Manikant Choudhary, CCI) at Solapur division covering ticketing/catering/amenities, certain commercial deficiencies and discrepancies were observed as per photographic evidences.\n\nIn view of the guidelines issued by the Railway Board Commercial Directorate, imposing a penalty / fine of Rs. [...] is strongly recommended against the defaulting agency/contractor.\n\nSubmitted for kind perusal and necessary orders please.")
         
-        d_submit = st.form_submit_button("Save & Export Official Noting", type="primary")
+        st.markdown("---")
+        d_loc = st.selectbox("Select Evidence Location:", LOCATION_OPTIONS, key="noting_loc")
+        d_photo = st.file_uploader("Upload Supporting Evidence Photo for Noting:", type=['jpg', 'jpeg', 'png'])
+        
+        d_submit = st.form_submit_button("Save & Generate Official Noting PDF", type="primary")
+        
         if d_submit and d_subject:
             save_letter_to_db(d_subject, d_recipient, d_content)
-            st.success("✅ Official Noting saved successfully to database!")
-            st.markdown(f"**Subject:** {d_subject}")
-            st.markdown(f"**To:** {d_recipient}")
-            st.text(d_content)
+            loc_str = d_loc if d_loc != "-- Select Commercial/Amenity Location --" else "Solapur Division Area"
+            photo_io = io.BytesIO(d_photo.read()) if d_photo else None
+            
+            st.session_state['noting_pdf'] = create_noting_pdf(d_subject, d_recipient, d_content, photo_io, loc_str)
+            st.session_state['noting_ready'] = True
+            st.success("✅ Official Noting saved & PDF generated successfully!")
+
+    if st.session_state.get('noting_ready') and 'noting_pdf' in st.session_state:
+        st.download_button(
+            label="📥 Download Official Noting & Fine Proposal PDF",
+            data=st.session_state['noting_pdf'],
+            file_name=f"CCI_Noting_Fine_Proposal_{datetime.now().strftime('%H%M%S')}.pdf",
+            mime="application/pdf"
+        )
 
     st.markdown("---")
     st.markdown("#### 📂 Saved Drafts & Proposals")
