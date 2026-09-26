@@ -290,6 +290,12 @@ def create_ppt(station_name, insp_type, items_list, layout_mode):
             p1.font.color.rgb = RGBColor(0, 51, 153)
             p1.alignment = PP_ALIGN.CENTER
             
+            if d1['show_dt']:
+                p1_dt = tb1.text_frame.add_paragraph()
+                p1_dt.text = f"Date & Time: {d1['date_str']} | {d1['time_str']}"
+                p1_dt.font.size = Pt(10)
+                p1_dt.alignment = PP_ALIGN.CENTER
+            
             p1_loc = tb1.text_frame.add_paragraph()
             p1_loc.text = f"Micro-Location: {d1['location']}"
             p1_loc.font.size = Pt(11)
@@ -347,9 +353,10 @@ def create_pdf(station_name, insp_type, items_list, layout_mode):
             pdf.set_fill_color(220, 53, 69) 
             pdf.rect(15, 111, 125, 9, 'F')
             pdf.set_xy(15, 111)
-            pdf.set_font("Arial", 'B', 13)
+            pdf.set_font("Arial", 'B', 12)
             pdf.set_text_color(255, 255, 255)
-            pdf.cell(125, 9, txt="DEFICIENCY / BEFORE EVIDENCE", ln=1, align='C')
+            b_txt = "DEFICIENCY / BEFORE" + (f" [{data['d_before']} {data['t_before']}]" if data['show_dt'] else "")
+            pdf.cell(125, 9, txt=b_txt, ln=1, align='C')
             
             pdf.set_line_width(0.8)
             pdf.set_draw_color(50, 50, 50)
@@ -358,9 +365,10 @@ def create_pdf(station_name, insp_type, items_list, layout_mode):
             pdf.set_fill_color(40, 167, 69) 
             pdf.rect(155, 111, 125, 9, 'F')
             pdf.set_xy(155, 111)
-            pdf.set_font("Arial", 'B', 13)
+            pdf.set_font("Arial", 'B', 12)
             pdf.set_text_color(255, 255, 255)
-            pdf.cell(125, 9, txt=f"RECTIFIED / AFTER (Score: {data['ai_score']}/10)", ln=1, align='C')
+            a_txt = f"RECTIFIED / AFTER (Score: {data['ai_score']}/10)" + (f" [{data['d_after']} {data['t_after']}]" if data['show_dt'] else "")
+            pdf.cell(125, 9, txt=a_txt, ln=1, align='C')
             
             pdf.set_fill_color(225, 235, 245)
             pdf.set_draw_color(0, 51, 153)
@@ -432,7 +440,8 @@ def create_pdf(station_name, insp_type, items_list, layout_mode):
             pdf.set_xy(0, 135)
             pdf.set_font("Arial", 'B', 11)
             pdf.set_text_color(0, 51, 153)
-            pdf.cell(0, 8, txt=f"Micro-Location: {data['location']} | Status: {data['status'].upper()}", ln=1, align='C')
+            dt_display = f" | Date/Time: {data['date_str']} {data['time_str']}" if data['show_dt'] else ""
+            pdf.cell(0, 8, txt=f"Micro-Location: {data['location']} | Status: {data['status'].upper()}{dt_display}", ln=1, align='C')
 
             if data['remarks']:
                 pdf.set_xy(20, 148)
@@ -576,25 +585,29 @@ if app_mode == "🔍 Master Field Inspection & Evidence":
                         p_after = active_image_files[i+1]
                         
                         st.write("---")
-                        col1, col2, col3, col4, col5 = st.columns([1, 1, 0.5, 0.8, 1.2])
+                        col1, col2, col3, col4, col5 = st.columns([1, 1, 0.4, 0.8, 1.3])
                         with col1:
                             st.image(p_before['bytes'], caption=f"🔴 BEFORE ({p_before['gps']})", use_container_width=True)
+                            st.markdown(f"<small style='color:gray;'>📅 {p_before['date_val']} ⏰ {p_before['time_val'].strftime('%I:%M:%S %p')}</small>", unsafe_allow_html=True)
                         with col2:
                             st.image(p_after['bytes'], caption=f"🟢 AFTER ({p_after['gps']})", use_container_width=True)
+                            st.markdown(f"<small style='color:gray;'>📅 {p_after['date_val']} ⏰ {p_after['time_val'].strftime('%I:%M:%S %p')}</small>", unsafe_allow_html=True)
                         with col3:
                             st.write("\n")
-                            include_pair = st.checkbox("Include?", value=True, key=f"inc_{i}")
+                            include_pair = st.checkbox("Inc?", value=True, key=f"inc_{i}")
+                            show_dt_pair = st.checkbox("Clock?", value=True, key=f"dt_{i}")
                         with col4:
                             st.write("\n")
-                            swap_pair = st.checkbox("🔄 Swap Before & After", value=False, key=f"swap_{i}")
+                            swap_pair = st.checkbox("🔄 Swap", value=False, key=f"swap_{i}")
                         with col5:
-                            loc_choice = st.selectbox("👉 Select Location:", LOCATION_OPTIONS, key=f"loc_{i}")
-                            custom_loc = st.text_input("✍️ Custom Location:", key=f"custom_loc_{i}", placeholder="Type if not listed...")
-                            remarks_input = st.text_input("💬 CCI Observations:", key=f"rem_{i}", placeholder="Deficiency noted...")
-                            fine_recommendation = st.text_input("⚖️ Fine Recommendation:", key=f"fine_{i}", placeholder="e.g. Rs. 5000/- penalty...")
+                            loc_choice = st.selectbox("👉 Location:", LOCATION_OPTIONS, key=f"loc_{i}")
+                            custom_loc = st.text_input("✍️ Custom:", key=f"custom_loc_{i}", placeholder="Type location...")
+                            remarks_input = st.text_input("💬 Observations:", key=f"rem_{i}", placeholder="Deficiency noted...")
+                            fine_recommendation = st.text_input("⚖️ Fine:", key=f"fine_{i}", placeholder="Penalty note...")
                         
                         inputs.append({
                             'include': include_pair,
+                            'show_dt': show_dt_pair,
                             'swap': swap_pair,
                             'before': p_before,
                             'after': p_after,
@@ -606,19 +619,22 @@ if app_mode == "🔍 Master Field Inspection & Evidence":
                 else:
                     for i, img_item in enumerate(active_image_files):
                         st.write("---")
-                        col1, col2, col3 = st.columns([1, 1, 2])
+                        col1, col2, col3 = st.columns([1, 1.2, 1.8])
                         with col1:
                             st.image(img_item['bytes'], caption=f"📷 Photo #{i+1}", use_container_width=True)
+                            st.markdown(f"<small style='color:gray;'>📅 {img_item['date_val']} ⏰ {img_item['time_val'].strftime('%I:%M:%S %p')}</small>", unsafe_allow_html=True)
                         with col2:
                             include_photo = st.checkbox("Include in Report?", value=True, key=f"inc_single_{i}")
+                            show_dt_single = st.checkbox("⏰ Show Date & Clock Stamp", value=True, key=f"dt_single_{i}")
                             status_type = st.selectbox("Status:", ["Deficiency (Before)", "Rectified (After)", "General Observation"], key=f"status_{i}")
                         with col3:
                             loc_choice = st.selectbox("👉 Select Location:", LOCATION_OPTIONS, key=f"loc_s_{i}")
                             custom_loc = st.text_input("✍️ Custom Location:", key=f"custom_loc_s_{i}", placeholder="Type location...")
-                            remarks_input = st.text_input("💬 CCI Observations / Fine Note:", key=f"rem_s_{i}", placeholder="Observations or penalty note...")
+                            remarks_input = st.text_input("💬 CCI Observations / Fine Note:", key=f"rem_s_{i}", placeholder="Observations...")
                         
                         inputs.append({
                             'include': include_photo,
+                            'show_dt': show_dt_single,
                             'img': img_item,
                             'status': status_type,
                             'loc_key': f"loc_s_{i}",
@@ -640,7 +656,6 @@ if app_mode == "🔍 Master Field Inspection & Evidence":
                                 if not item['include']:
                                     continue
                                 
-                                # HANDLE SWAP LOGIC
                                 img_b = item['after']['bytes'] if item['swap'] else item['before']['bytes']
                                 img_a = item['before']['bytes'] if item['swap'] else item['after']['bytes']
                                 
@@ -654,7 +669,7 @@ if app_mode == "🔍 Master Field Inspection & Evidence":
                                 final_items.append({
                                     'before': process_image(img_b),
                                     'after': process_image(img_a),
-                                    'show_dt': True,
+                                    'show_dt': item['show_dt'],
                                     'd_before': item['before']['date_val'].strftime("%Y-%m-%d"),
                                     't_before': item['before']['time_val'].strftime("%I:%M:%S %p"),
                                     'd_after': item['after']['date_val'].strftime("%Y-%m-%d"),
@@ -676,6 +691,9 @@ if app_mode == "🔍 Master Field Inspection & Evidence":
                                 final_items.append({
                                     'img': process_image(item['img']['bytes']),
                                     'status': item['status'],
+                                    'show_dt': item['show_dt'],
+                                    'date_str': item['img']['date_val'].strftime("%Y-%m-%d"),
+                                    'time_str': item['img']['time_val'].strftime("%I:%M:%S %p"),
                                     'location': loc_name,
                                     'remarks': remarks_val
                                 })
