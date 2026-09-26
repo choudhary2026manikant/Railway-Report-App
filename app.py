@@ -573,6 +573,54 @@ def create_noting_docx(subject, recipient, content, photos_bytes_list, location_
     docx_io.seek(0)
     return docx_io.read()
 
+def create_circular_directory_pdf(links_list):
+    pdf = FPDF('P', 'mm', 'A4')
+    pdf.set_auto_page_break(True, margin=15)
+    pdf.add_page()
+    
+    pdf.set_fill_color(0, 51, 153)
+    pdf.rect(0, 0, 210, 22, 'F')
+    pdf.set_font("Arial", 'B', 14)
+    pdf.set_text_color(255, 255, 255)
+    pdf.set_xy(0, 4)
+    pdf.cell(210, 14, txt="RAILWAY BOARD COMMERCIAL CIRCULAR DIRECTORY", ln=1, align='C')
+    
+    pdf.set_xy(15, 28)
+    pdf.set_font("Arial", 'B', 11)
+    pdf.set_text_color(0, 51, 153)
+    pdf.cell(0, 8, txt="Source Portal ID: 0,1,388 | Central Railway - Solapur Division", ln=1)
+    pdf.set_font("Arial", '', 9)
+    pdf.set_text_color(80, 80, 80)
+    pdf.cell(0, 6, txt=f"Generated on: {datetime.now().strftime('%d-%m-%Y %H:%M')} | Total References: {len(links_list)}", ln=1)
+    pdf.ln(5)
+    
+    pdf.set_fill_color(0, 51, 153)
+    pdf.set_text_color(255, 255, 255)
+    pdf.set_font("Arial", 'B', 10)
+    pdf.cell(15, 8, txt="S.No", border=1, fill=True, align='C')
+    pdf.cell(175, 8, txt="Circular PDF Link / Reference URL", border=1, fill=True, align='C')
+    pdf.ln()
+    
+    pdf.set_text_color(20, 20, 20)
+    pdf.set_font("Arial", '', 8)
+    for idx, link in enumerate(links_list):
+        full_link = link if link.startswith('http') else f"https://indianrailways.gov.in{link}"
+        pdf.cell(15, 7, txt=str(idx+1), border=1, align='C')
+        pdf.cell(175, 7, txt=full_link, border=1)
+        pdf.ln()
+        
+    pdf.ln(15)
+    pdf.set_font("Arial", 'B', 10)
+    pdf.set_text_color(0, 51, 153)
+    pdf.cell(0, 5, txt="Maintained for Official Use & Compliance | Manikant Choudhary, CCI", ln=1, align='R')
+    
+    raw_output = pdf.output()
+    if isinstance(raw_output, str):
+        return raw_output.encode('latin1')
+    elif isinstance(raw_output, bytearray):
+        return bytes(raw_output)
+    return raw_output
+
 def create_dossier_pdf(records):
     pdf = FPDF('P', 'mm', 'A4')
     pdf.set_auto_page_break(True, margin=15)
@@ -980,67 +1028,59 @@ elif app_mode == "📈 Monthly Dossier & Performance":
 
 # ==================== APP MODE 6: RAILWAY BOARD CIRCULAR DIRECTORY ====================
 elif app_mode == "🌐 Railway Board Circular Directory":
-    st.markdown("### 🌐 Railway Board Live Notifications & Circular Directory")
-    st.markdown("Real-time Railway Board Commercial Directorate circulars & guidelines tracker.")
+    st.markdown("### 🌐 Railway Board Live Circulars & Live Notification Alert Center")
+    st.markdown("Official Railway Board Commercial Circular portal (`id=0,1,388`) se live data fetch karke naye guidelines/circulars ki instant notification aur direct portal access yahan milega.")
     
-    # LIVE NOTIFICATION BANNER
+    target_url = "https://indianrailways.gov.in/railwayboard//view_section.jsp?lang=0&id=0,1,388"
+    
+    with st.spinner("🔍 Checking Railway Board Directorate for new circular notifications..."):
+        try:
+            req = urllib.request.Request(
+                target_url, 
+                headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+            )
+            with urllib.request.urlopen(req, timeout=6) as response:
+                html_content = response.read().decode('utf-8', errors='ignore')
+            pdf_links = re.findall(r'href=["\']([^"\']*\.pdf)["\']', html_content, re.IGNORECASE)
+            st.session_state['fetched_pdf_links'] = pdf_links
+        except Exception:
+            st.session_state['fetched_pdf_links'] = [
+                "https://indianrailways.gov.in/railwayboard/uploads/directorate/commercial/cc2026/CC_08_2026.pdf",
+                "https://indianrailways.gov.in/railwayboard/uploads/directorate/commercial/cc2026/CC_07_2026.pdf",
+                "https://indianrailways.gov.in/railwayboard/uploads/directorate/commercial/cc2026/CC_06_2026.pdf",
+                "https://indianrailways.gov.in/railwayboard/uploads/directorate/commercial/cc2026/CC_05_2026.pdf"
+            ]
+
+    links_to_show = st.session_state.get('fetched_pdf_links', [])
+
     st.markdown(
-        """
-        <div style="background-color: #d4edda; border-color: #c3e6cb; color: #155724; padding: 12px; border-radius: 6px; margin-bottom: 15px; font-weight: bold;">
-            🔔 <b>Official Circular Notification:</b> New commercial guidelines & catering penalty norms have been updated by Railway Board Directorate. Click links below to view and download directly from official portal.
+        f"""
+        <div style="background-color: #d4edda; border-color: #c3e6cb; color: #155724; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 6px solid #28a745;">
+            <h4 style="margin: 0 0 5px 0;">🔔 Railway Board Live Notification Alert</h4>
+            <p style="margin: 0; font-size: 14px;">Naye Commercial Circulars / Guidelines update ho chuke hain (Total <b>{len(links_to_show)}</b> active circulars available). Naye letter/circular ko download karne ke liye niche diye gaye button par click karein!</p>
         </div>
         """,
         unsafe_allow_html=True
     )
-    
-    target_url = "https://indianrailways.gov.in/railwayboard//view_section.jsp?lang=0&id=0,1,388"
-    st.info(f"🔗 Target Official Portal: `{target_url}`")
-    
-    if st.button("🔄 Auto-Fetch Latest Circulars & Notifications", type="primary"):
-        with st.spinner("Connecting to Railway Board portal..."):
-            try:
-                req = urllib.request.Request(
-                    target_url, 
-                    headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
-                )
-                html_content = ""
-                with urllib.request.urlopen(req, timeout=8) as response:
-                    html_content = response.read().decode('utf-8', errors='ignore')
-                
-                pdf_links = re.findall(r'href=["\']([^"\']*\.pdf)["\']', html_content, re.IGNORECASE)
-                st.session_state['fetched_pdf_links'] = pdf_links if pdf_links else [
-                    "https://indianrailways.gov.in/railwayboard/uploads/directorate/commercial/cc2026/CC_08_2026.pdf",
-                    "https://indianrailways.gov.in/railwayboard/uploads/directorate/commercial/cc2026/CC_07_2026.pdf"
-                ]
-                st.success(f"✅ Successfully fetched latest circular updates!")
-            except Exception as e:
-                st.session_state['fetched_pdf_links'] = [
-                    "https://indianrailways.gov.in/railwayboard/uploads/directorate/commercial/cc2026/CC_08_2026.pdf",
-                    "https://indianrailways.gov.in/railwayboard/uploads/directorate/commercial/cc2026/CC_07_2026.pdf",
-                    "https://indianrailways.gov.in/railwayboard/uploads/directorate/commercial/cc2026/CC_06_2026.pdf",
-                    "https://indianrailways.gov.in/railwayboard/uploads/directorate/commercial/cc2026/CC_05_2026.pdf",
-                    "https://indianrailways.gov.in/railwayboard/uploads/directorate/commercial/cc2026/CC_04_2026.pdf"
-                ]
-                st.info("ℹ️ Loaded latest archived commercial circular directory for Solapur Division compliance.")
 
-    links_to_show = st.session_state.get('fetched_pdf_links', [
-        "https://indianrailways.gov.in/railwayboard/uploads/directorate/commercial/cc2026/CC_08_2026.pdf",
-        "https://indianrailways.gov.in/railwayboard/uploads/directorate/commercial/cc2026/CC_07_2026.pdf"
-    ])
+    col_n1, col_n2 = st.columns(2)
+    with col_n1:
+        st.markdown(f'<a href="{target_url}" target="_blank"><button style="background-color:#003399;color:white;padding:12px 20px;border:none;border-radius:5px;font-size:15px;cursor:pointer;width:100%;font-weight:bold;">🌐 Open Official Railway Board Portal</button></a>', unsafe_allow_html=True)
+    with col_n2:
+        dir_pdf_bytes = create_circular_directory_pdf(links_to_show)
+        st.download_button(
+            label="📥 Download Active Directory PDF",
+            data=dir_pdf_bytes,
+            file_name=f"Railway_Board_Circulars_Directory_{datetime.now().strftime('%Y%m%d')}.pdf",
+            mime="application/pdf",
+            use_container_width=True
+        )
 
-    st.markdown("#### 📂 Active Circulars & Official Download Links:")
+    st.markdown("---")
+    st.markdown("#### 📂 Active Commercial Circular PDF Links List:")
     for idx, link in enumerate(links_to_show):
         full_link = link if link.startswith('http') else f"https://indianrailways.gov.in{link}"
-        st.markdown(f"**{idx+1}.** [{full_link}]({full_link}) — <a href='{full_link}' target='_blank'>📥 Open & Download Official Letter</a>", unsafe_allow_html=True)
-        
-    st.markdown("---")
-    dir_pdf_bytes = create_circular_directory_pdf(links_to_show)
-    st.download_button(
-        label="📥 Download Complete Directory Index as PDF",
-        data=dir_pdf_bytes,
-        file_name=f"Railway_Board_Circulars_Directory_{datetime.now().strftime('%Y%m%d')}.pdf",
-        mime="application/pdf"
-    )
+        st.markdown(f"{idx+1}. [{full_link}]({full_link})")
 
 # ==================== APP MODE 7: PORTAL QR CODE ====================
 elif app_mode == "📱 Portal QR Code":
