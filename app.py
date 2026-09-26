@@ -117,16 +117,14 @@ with st.sidebar:
     st.markdown("`Manikant Choudhary`\n\n`Chief Commercial Inspector`\n\n`Solapur Division, C.Rly.`")
     
     st.markdown("---")
-    st.markdown("✍️ **Custom Digital Signature / Seal:**")
+    st.markdown("✍️ **Custom Digital Signature / Seal (For PPT Only):**")
     sig_file = st.file_uploader("Upload CCI Sign / Seal (PNG/JPG):", type=['png', 'jpg', 'jpeg'], key="sig_uploader")
     if sig_file:
         st.session_state['sig_bytes'] = sig_file.read()
         st.success("✅ Signature uploaded successfully!")
     
-    # CUSTOMIZATION OPTIONS FOR SIGNATURE
     st.session_state['custom_sign_name'] = st.text_input("Signatory Name:", value="Manikant Choudhary, CCI", key="c_name")
     st.session_state['custom_sign_sub'] = st.text_input("Signatory Designation / Office:", value="Sr. DCM Office, Central Railway, Solapur", key="c_sub")
-    st.session_state['sign_alignment'] = st.selectbox("Signature Alignment:", ["Right Side", "Left Side", "Center"], key="c_align")
 
     st.markdown("---")
     if st.button("🔒 Logout"):
@@ -349,18 +347,10 @@ def create_ppt(station_name, insp_type, items_list, layout_mode, sig_bytes=None,
     ppt_io.seek(0)
     return ppt_io.read()
 
-def create_pdf(station_name, insp_type, items_list, layout_mode, sig_bytes=None, sign_name="", sign_sub="", align="Right Side"):
+def create_pdf(station_name, insp_type, items_list, layout_mode):
     pdf = FPDF('L', 'mm', 'A4')
     pdf.set_auto_page_break(False)
     
-    # Calculate X position based on alignment
-    if align == "Left Side":
-        box_x = 15
-    elif align == "Center":
-        box_x = 102
-    else: # Right Side
-        box_x = 195
-
     if layout_mode == "Before & After Pairs (Comparison)":
         for data in items_list:
             pdf.add_page()
@@ -425,24 +415,6 @@ def create_pdf(station_name, insp_type, items_list, layout_mode, sig_bytes=None,
                 pdf.set_text_color(180, 0, 0)
                 pdf.cell(257, 6, txt=f"Fine Recommendation: {data['fine']}", ln=1, align='L')
             
-            pdf.set_draw_color(0, 51, 153)
-            pdf.set_line_width(0.4)
-            pdf.rect(box_x, 163, 92, 26, 'D')
-            
-            if sig_bytes:
-                with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp_s:
-                    tmp_s.write(sig_bytes)
-                    path_s = tmp_s.name
-                pdf.image(path_s, x=box_x + 28, y=164, w=35, h=15)
-                os.remove(path_s)
-                
-            pdf.set_font("Arial", 'B', 8)
-            pdf.set_text_color(0, 51, 153)
-            pdf.set_xy(box_x + 2, 180)
-            pdf.cell(88, 4, txt=sign_name, ln=1, align='C')
-            pdf.set_xy(box_x + 2, 184)
-            pdf.cell(88, 4, txt=sign_sub, ln=1, align='C')
-            
             pdf.set_xy(15, 192)
             pdf.set_font("Arial", 'I', 9)
             pdf.set_text_color(100, 100, 100)
@@ -488,24 +460,6 @@ def create_pdf(station_name, insp_type, items_list, layout_mode, sig_bytes=None,
                 pdf.set_text_color(50, 50, 50)
                 pdf.cell(257, 6, txt=f"CCI Observations: {data['remarks']}", ln=1, align='L')
             
-            pdf.set_draw_color(0, 51, 153)
-            pdf.set_line_width(0.4)
-            pdf.rect(box_x, 163, 92, 26, 'D')
-            
-            if sig_bytes:
-                with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp_s:
-                    tmp_s.write(sig_bytes)
-                    path_s = tmp_s.name
-                pdf.image(path_s, x=box_x + 28, y=164, w=35, h=15)
-                os.remove(path_s)
-
-            pdf.set_font("Arial", 'B', 8)
-            pdf.set_text_color(0, 51, 153)
-            pdf.set_xy(box_x + 2, 180)
-            pdf.cell(88, 4, txt=sign_name, ln=1, align='C')
-            pdf.set_xy(box_x + 2, 184)
-            pdf.cell(88, 4, txt=sign_sub, ln=1, align='C')
-            
             pdf.set_xy(15, 192)
             pdf.set_font("Arial", 'I', 9)
             pdf.set_text_color(100, 100, 100)
@@ -520,7 +474,7 @@ def create_pdf(station_name, insp_type, items_list, layout_mode, sig_bytes=None,
         return bytes(raw_output)
     return raw_output
 
-def create_noting_pdf(subject, recipient, content, photo_bytes, location_str, sig_bytes=None, sign_name="", sign_sub=""):
+def create_noting_pdf(subject, recipient, content, photo_bytes, location_str):
     pdf = FPDF('P', 'mm', 'A4')
     pdf.set_auto_page_break(True, margin=15)
     pdf.add_page()
@@ -561,19 +515,11 @@ def create_noting_pdf(subject, recipient, content, photo_bytes, location_str, si
         os.remove(path_n)
         
     pdf.ln(20)
-    if sig_bytes:
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp_s:
-            tmp_s.write(sig_bytes)
-            path_s = tmp_s.name
-        pdf.image(path_s, x=150, y=pdf.get_y(), w=40, h=18)
-        os.remove(path_s)
-        pdf.ln(18)
-        
     pdf.set_font("Arial", 'B', 10)
     pdf.set_text_color(0, 51, 153)
     pdf.cell(0, 5, txt="Submitted by:", ln=1, align='R')
-    pdf.cell(0, 5, txt=sign_name, ln=1, align='R')
-    pdf.cell(0, 5, txt=sign_sub, ln=1, align='R')
+    pdf.cell(0, 5, txt="Manikant Choudhary, CCI / Solapur", ln=1, align='R')
+    pdf.cell(0, 5, txt="Sr. DCM Office, Central Railway", ln=1, align='R')
     
     raw_output = pdf.output()
     if isinstance(raw_output, str):
@@ -714,7 +660,6 @@ if app_mode == "🔍 Master Field Inspection & Evidence":
                         sig_data = st.session_state.get('sig_bytes', None)
                         sign_n = st.session_state.get('custom_sign_name', 'Manikant Choudhary, CCI')
                         sign_s = st.session_state.get('custom_sign_sub', 'Sr. DCM Office, Central Railway, Solapur')
-                        sign_align = st.session_state.get('sign_alignment', 'Right Side')
 
                         if layout_mode == "Before & After Pairs (Comparison)":
                             for idx, item in enumerate(inputs):
@@ -771,7 +716,7 @@ if app_mode == "🔍 Master Field Inspection & Evidence":
                         if final_items:
                             save_inspection_to_db(st_name, inspection_type, datetime.now().strftime("%Y-%m-%d %H:%M"))
                             st.session_state['ppt_data'] = create_ppt(st_name, inspection_type, final_items, layout_mode, sig_bytes=sig_data, sign_name=sign_n, sign_sub=sign_s)
-                            st.session_state['pdf_data'] = create_pdf(st_name, inspection_type, final_items, layout_mode, sig_bytes=sig_data, sign_name=sign_n, sign_sub=sign_s, align=sign_align)
+                            st.session_state['pdf_data'] = create_pdf(st_name, inspection_type, final_items, layout_mode)
                             st.session_state['report_ready'] = True
                             st.success("🎉 Official Inspection Report Prepared Successfully!")
                         else:
@@ -806,7 +751,7 @@ if app_mode == "🔍 Master Field Inspection & Evidence":
 # ==================== APP MODE 2: NOTING & LETTER DRAFTING ====================
 elif app_mode == "📝 Official Noting & Fine Proposal":
     st.markdown("### 📝 Official Noting, Letter & Fine Proposal Drafting Module")
-    st.markdown("Office ke liye formal noting, letter aur penalty recommendation draft taiyar karein (साथ में साक्ष्य फोटो और डिजिटल हस्ताक्षर की सुविधा)।")
+    st.markdown("Office ke liye formal noting, letter aur penalty recommendation draft taiyar karein (साथ में साक्ष्य फोटो अपलोड करने की सुविधा)।")
     
     with st.form("drafting_form"):
         d_subject = st.text_input("Subject / Title:", placeholder="e.g. Proposal for imposing penalty on catering/cleaning agency at Solapur station under Railway Board guidelines.")
@@ -823,11 +768,8 @@ elif app_mode == "📝 Official Noting & Fine Proposal":
             save_letter_to_db(d_subject, d_recipient, d_content)
             loc_str = d_loc if d_loc != "-- Select Commercial/Amenity Location --" else "Solapur Division Area"
             photo_io = io.BytesIO(d_photo.read()) if d_photo else None
-            sig_data = st.session_state.get('sig_bytes', None)
-            sign_n = st.session_state.get('custom_sign_name', 'Manikant Choudhary, CCI')
-            sign_s = st.session_state.get('custom_sign_sub', 'Sr. DCM Office, Central Railway, Solapur')
             
-            st.session_state['noting_pdf'] = create_noting_pdf(d_subject, d_recipient, d_content, photo_io, loc_str, sig_bytes=sig_data, sign_name=sign_n, sign_sub=sign_s)
+            st.session_state['noting_pdf'] = create_noting_pdf(d_subject, d_recipient, d_content, photo_io, loc_str)
             st.session_state['noting_ready'] = True
             st.success("✅ Official Noting saved & PDF generated successfully!")
 
