@@ -11,6 +11,7 @@ import urllib.parse
 import qrcode
 import urllib.request
 import urllib.error
+from docx import Document
 
 st.set_page_config(page_title="Master Portal - CCI Manikant Choudhary (Solapur)", layout="wide")
 
@@ -543,6 +544,33 @@ def create_noting_pdf(subject, recipient, content, photos_list, location_str):
         return bytes(raw_output)
     return raw_output
 
+def create_noting_docx(subject, recipient, content, photos_list, location_str):
+    doc = Document()
+    doc.add_heading('CENTRAL RAILWAY — SOLAPUR DIVISION', level=1)
+    doc.add_paragraph(f"To: {recipient}")
+    doc.add_paragraph(f"Subject: {subject}")
+    doc.add_paragraph(f"Location: {location_str}")
+    doc.add_paragraph("--------------------------------------------------")
+    doc.add_paragraph(content)
+    doc.add_paragraph("\n")
+    
+    if photos_list:
+        doc.add_heading('Attached Evidence Photos:', level=2)
+        for p_file in photos_list:
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp_d:
+                tmp_d.write(p_file.read())
+                path_d = tmp_d.name
+            doc.add_picture(path_d, width=Inches(5.5))
+            os.remove(path_d)
+            doc.add_paragraph("\n")
+            
+    doc.add_paragraph("\nSubmitted by:\nManikant Choudhary, CCI / Solapur\nSr. DCM Office, Central Railway")
+    
+    docx_io = io.BytesIO()
+    doc.save(docx_io)
+    docx_io.seek(0)
+    return docx_io.read()
+
 def create_dossier_pdf(records):
     pdf = FPDF('P', 'mm', 'A4')
     pdf.set_auto_page_break(True, margin=15)
@@ -822,37 +850,49 @@ if app_mode == "🔍 Master Field Inspection & Evidence":
 # ==================== APP MODE 2: NOTING & LETTER DRAFTING ====================
 elif app_mode == "📝 Official Noting & Fine Proposal":
     st.markdown("### 📝 Official Noting, Letter & Fine Proposal Drafting Module")
-    st.markdown("Office ke liye formal noting, letter aur penalty recommendation draft taiyar karein (साथ में **Bulk Evidentiary Photos** और रेलवे बोर्ड रूल रिफरेंस)।")
+    st.markdown("Office ke liye formal noting, letter aur penalty recommendation draft taiyar karein (साथ में **Bulk Evidentiary Photos** और PDF/Word download)।")
     
-    with st.form("drafting_form"):
-        d_subject = st.text_input("Subject / Title:", placeholder="e.g. Proposal for imposing penalty on catering/cleaning agency at Solapur station under Railway Board guidelines.")
-        d_recipient = st.text_input("Addressed To:", value="Sr. Divisional Commercial Manager (Sr. DCM), Central Railway, Solapur")
-        d_content = st.text_area("Drafting Body (Noting / Proposal text):", height=200, value="Respected Sir,\n\nIn reference to the field inspection conducted by the undersigned at Solapur division covering ticketing/catering/amenities, certain commercial deficiencies and discrepancies were observed as per photographic evidences.\n\nIn view of the guidelines issued by the Railway Board Commercial Directorate, imposing a penalty / fine of Rs. [...] is strongly recommended against the defaulting agency/contractor.\n\nSubmitted for kind perusal and necessary orders please.")
-        
-        st.markdown("---")
-        d_loc = st.selectbox("Select Evidence Location:", LOCATION_OPTIONS, key="noting_loc")
-        d_fine_rule = st.selectbox("Select Railway Board Fine Rule:", FINE_PRESETS, key="noting_fine_rule")
-        
-        # BULK PHOTO UPLOADER FOR NOTING
-        d_photos = st.file_uploader("📂 Upload Supporting Evidence Photos (Multiple photos allowed):", type=['jpg', 'jpeg', 'png'], accept_multiple_files=True, key="noting_bulk_photos")
-        
-        d_submit = st.form_submit_button("Save & Generate Official Noting PDF", type="primary")
-        
-        if d_submit and d_subject:
+    # OUTSIDE FORM FOR PERFECT FILE UPLOADER SUPPORT
+    d_subject = st.text_input("Subject / Title:", placeholder="e.g. Proposal for imposing penalty on catering/cleaning agency at Solapur station under Railway Board guidelines.")
+    d_recipient = st.text_input("Addressed To:", value="Sr. Divisional Commercial Manager (Sr. DCM), Central Railway, Solapur")
+    d_content = st.text_area("Drafting Body (Noting / Proposal text):", height=200, value="Respected Sir,\n\nIn reference to the field inspection conducted by the undersigned at Solapur division covering ticketing/catering/amenities, certain commercial deficiencies and discrepancies were observed as per photographic evidences.\n\nIn view of the guidelines issued by the Railway Board Commercial Directorate, imposing a penalty / fine of Rs. [...] is strongly recommended against the defaulting agency/contractor.\n\nSubmitted for kind perusal and necessary orders please.")
+    
+    st.markdown("---")
+    d_loc = st.selectbox("Select Evidence Location:", LOCATION_OPTIONS, key="noting_loc")
+    d_fine_rule = st.selectbox("Select Railway Board Fine Rule:", FINE_PRESETS, key="noting_fine_rule")
+    
+    d_photos = st.file_uploader("📂 Upload Supporting Evidence Photos (Multiple photos allowed):", type=['jpg', 'jpeg', 'png'], accept_multiple_files=True, key="noting_bulk_photos")
+    
+    if st.button("🚀 Generate Official Noting (PDF & Word)", type="primary"):
+        if d_subject:
             save_letter_to_db(d_subject, d_recipient, d_content)
             loc_str = d_loc if d_loc != "-- Select Commercial/Amenity Location --" else "Solapur Division Area"
             
             st.session_state['noting_pdf'] = create_noting_pdf(d_subject, d_recipient, d_content, d_photos, loc_str)
+            st.session_state['noting_docx'] = create_noting_docx(d_subject, d_recipient, d_content, d_photos, loc_str)
             st.session_state['noting_ready'] = True
-            st.success("✅ Official Noting saved & PDF generated successfully!")
+            st.success("✅ Official Noting generated successfully in both PDF and Word formats!")
+        else:
+            st.warning("⚠️ Please enter Subject / Title before generating!")
 
-    if st.session_state.get('noting_ready') and 'noting_pdf' in st.session_state:
-        st.download_button(
-            label="📥 Download Official Noting & Fine Proposal PDF",
-            data=st.session_state['noting_pdf'],
-            file_name=f"CCI_Noting_Fine_Proposal_{datetime.now().strftime('%H%M%S')}.pdf",
-            mime="application/pdf"
-        )
+    if st.session_state.get('noting_ready'):
+        st.markdown("---")
+        st.markdown("#### 📥 Download Generated Files:")
+        col_n1, col_n2 = st.columns(2)
+        with col_n1:
+            st.download_button(
+                label="📥 Download Noting PDF",
+                data=st.session_state['noting_pdf'],
+                file_name=f"CCI_Noting_{datetime.now().strftime('%H%M%S')}.pdf",
+                mime="application/pdf"
+            )
+        with col_n2:
+            st.download_button(
+                label="📄 Download Noting Word (.docx)",
+                data=st.session_state['noting_docx'],
+                file_name=f"CCI_Noting_{datetime.now().strftime('%H%M%S')}.docx",
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            )
 
     st.markdown("---")
     st.markdown("#### 📂 Saved Drafts & Proposals")
