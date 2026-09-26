@@ -541,10 +541,9 @@ if app_mode == "🔍 Master Field Inspection & Evidence":
     st.markdown("### 2. Choose Assembly Mode & Bulk Upload Photos")
     layout_mode = st.radio("Select Report Layout Style:", ["Before & After Pairs (Comparison)", "Individual / Single Photos (Flexible Evidence)"])
     
-    # BULK UPLOAD ENABLED (accept_multiple_files=True)
     uploaded_files = st.file_uploader("Upload Bulk Evidentiary Photos (Select multiple JPG/PNG/ZIP files at once):", type=['zip', 'jpg', 'jpeg', 'png'], accept_multiple_files=True)
 
-    if uploaded_files and station_input:
+    if uploaded_files:
         image_files = []
         for uf in uploaded_files:
             if uf.name.lower().endswith('.zip'):
@@ -623,61 +622,62 @@ if app_mode == "🔍 Master Field Inspection & Evidence":
                     submit = st.form_submit_button("3. Generate Official Report for Sr. DCM Submission", type="primary")
                     
                 if submit:
-                    with st.spinner("Generating Official PPT & PDF Reports..."):
-                        final_items = []
-                        if layout_mode == "Before & After Pairs (Comparison)":
-                            for idx, item in enumerate(inputs):
-                                if not item['include']:
-                                    continue
-                                dropdown_val = st.session_state[item['loc_key']]
-                                custom_val = st.session_state[item['custom_loc_key']].strip()
-                                loc_name = custom_val if custom_val else (dropdown_val if dropdown_val != "-- Select Commercial/Amenity Location --" else "Location Not Specified")
-                                remarks_val = st.session_state.get(item['rem_key'], "").strip()
-                                fine_val = st.session_state.get(item['fine_key'], "").strip()
-                                ai_score = round(9.1 + (idx % 8) * 0.1, 1)
-                                
-                                final_items.append({
-                                    'before': process_image(item['before']['bytes']),
-                                    'after': process_image(item['after']['bytes']),
-                                    'show_dt': True,
-                                    'd_before': item['before']['date_val'].strftime("%Y-%m-%d"),
-                                    't_before': item['before']['time_val'].strftime("%I:%M:%S %p"),
-                                    'd_after': item['after']['date_val'].strftime("%Y-%m-%d"),
-                                    't_after': item['after']['time_val'].strftime("%I:%M:%S %p"),
-                                    'location': loc_name,
-                                    'remarks': remarks_val,
-                                    'fine': fine_val,
-                                    'ai_score': ai_score
-                                })
-                        else:
-                            for idx, item in enumerate(inputs):
-                                if not item['include']:
-                                    continue
-                                dropdown_val = st.session_state[item['loc_key']]
-                                custom_val = st.session_state[item['custom_loc_key']].strip()
-                                loc_name = custom_val if custom_val else (dropdown_val if dropdown_val != "-- Select Commercial/Amenity Location --" else "Location Not Specified")
-                                remarks_val = st.session_state.get(item['rem_key'], "").strip()
-                                
-                                final_items.append({
-                                    'img': process_image(item['img']['bytes']),
-                                    'status': item['status'],
-                                    'location': loc_name,
-                                    'remarks': remarks_val
-                                })
-                        
-                        if final_items:
-                            save_inspection_to_db(station_input, inspection_type, datetime.now().strftime("%Y-%m-%d %H:%M"))
-                            st.session_state['ppt_data'] = create_ppt(station_input, inspection_type, final_items, layout_mode)
-                            st.session_state['pdf_data'] = create_pdf(station_input, inspection_type, final_items, layout_mode)
-                            st.session_state['report_ready'] = True
-                            st.rerun()
-                        else:
-                            st.warning("⚠️ Please select at least one photo item to include in the report.")
-        else:
-            st.warning("Please upload at least 1 photo!")
+                    if not station_input.strip():
+                        st.error("⚠️ Please enter Station / Train No. & Name before generating report!")
+                    else:
+                        with st.spinner("Generating Official PPT & PDF Reports..."):
+                            final_items = []
+                            if layout_mode == "Before & After Pairs (Comparison)":
+                                for idx, item in enumerate(inputs):
+                                    if not item['include']:
+                                        continue
+                                    dropdown_val = st.session_state[item['loc_key']]
+                                    custom_val = st.session_state[item['custom_loc_key']].strip()
+                                    loc_name = custom_val if custom_val else (dropdown_val if dropdown_val != "-- Select Commercial/Amenity Location --" else "Location Not Specified")
+                                    remarks_val = st.session_state.get(item['rem_key'], "").strip()
+                                    fine_val = st.session_state.get(item['fine_key'], "").strip()
+                                    ai_score = round(9.1 + (idx % 8) * 0.1, 1)
+                                    
+                                    final_items.append({
+                                        'before': process_image(item['before']['bytes']),
+                                        'after': process_image(item['after']['bytes']),
+                                        'show_dt': True,
+                                        'd_before': item['before']['date_val'].strftime("%Y-%m-%d"),
+                                        't_before': item['before']['time_val'].strftime("%I:%M:%S %p"),
+                                        'd_after': item['after']['date_val'].strftime("%Y-%m-%d"),
+                                        't_after': item['after']['time_val'].strftime("%I:%M:%S %p"),
+                                        'location': loc_name,
+                                        'remarks': remarks_val,
+                                        'fine': fine_val,
+                                        'ai_score': ai_score
+                                    })
+                            else:
+                                for idx, item in enumerate(inputs):
+                                    if not item['include']:
+                                        continue
+                                    dropdown_val = st.session_state[item['loc_key']]
+                                    custom_val = st.session_state[item['custom_loc_key']].strip()
+                                    loc_name = custom_val if custom_val else (dropdown_val if dropdown_val != "-- Select Commercial/Amenity Location --" else "Location Not Specified")
+                                    remarks_val = st.session_state.get(item['rem_key'], "").strip()
+                                    
+                                    final_items.append({
+                                        'img': process_image(item['img']['bytes']),
+                                        'status': item['status'],
+                                        'location': loc_name,
+                                        'remarks': remarks_val
+                                    })
+                            
+                            if final_items:
+                                save_inspection_to_db(station_input, inspection_type, datetime.now().strftime("%Y-%m-%d %H:%M"))
+                                st.session_state['ppt_data'] = create_ppt(station_input, inspection_type, final_items, layout_mode)
+                                st.session_state['pdf_data'] = create_pdf(station_input, inspection_type, final_items, layout_mode)
+                                st.session_state['report_ready'] = True
+                                st.success("🎉 Official Inspection Report Prepared Successfully!")
+                            else:
+                                st.warning("⚠️ Please select at least one photo item to include in the report.")
 
     if st.session_state.get('report_ready') and 'pdf_data' in st.session_state and 'ppt_data' in st.session_state:
-        st.success("🎉 Official Inspection Report Prepared Successfully by CCI Manikant Choudhary!")
+        st.success("✅ Reports are ready for download below:")
         current_time_str = datetime.now().strftime('%H%M%S')
         
         col_ppt, col_pdf = st.columns(2)
@@ -685,20 +685,20 @@ if app_mode == "🔍 Master Field Inspection & Evidence":
             st.download_button(
                 label="⬇️ Download PowerPoint Report (.pptx)", 
                 data=st.session_state['ppt_data'], 
-                file_name=f"CCI_{station_input}_Report_{current_time_str}.pptx",
+                file_name=f"CCI_Inspection_Report_{current_time_str}.pptx",
                 mime="application/vnd.openxmlformats-officedocument.presentationml.presentation"
             )
         with col_pdf:
             st.download_button(
                 label="📥 Download Official PDF Report for Sr. DCM", 
                 data=st.session_state['pdf_data'], 
-                file_name=f"CCI_{station_input}_DCM_Submission_{current_time_str}.pdf",
+                file_name=f"CCI_DCM_Submission_{current_time_str}.pdf",
                 mime="application/pdf"
             )
         
         st.markdown("---")
         st.markdown("### 📲 Direct WhatsApp Share with Sr. DCM Office")
-        wa_msg = urllib.parse.quote(f"Respected Sir, Inspection Report for {station_input} has been prepared by Manikant Choudhary, CCI / Solapur and is ready for submission.")
+        wa_msg = urllib.parse.quote("Respected Sir, Inspection Report has been prepared by Manikant Choudhary, CCI / Solapur and is ready for submission.")
         st.markdown(f'<a href="https://api.whatsapp.com/send?text={wa_msg}" target="_blank"><button style="background-color:#25D366;color:white;padding:10px 20px;border:none;border-radius:5px;font-size:16px;cursor:pointer;">💬 Share on WhatsApp</button></a>', unsafe_allow_html=True)
 
 # ==================== APP MODE 2: NOTING & LETTER DRAFTING ====================
