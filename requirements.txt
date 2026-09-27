@@ -5,3 +5,4 @@ Pillow
 docx
 pypdf
 qrcode
+google-generativeai
