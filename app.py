@@ -1134,12 +1134,12 @@ elif app_mode == "🌐 Railway Board Circular Directory":
 # ==================== APP MODE 7: GEMINI AI PDF ANALYST ====================
 elif app_mode == "🤖 Gemini AI PDF Analyst":
     st.markdown("### 🤖 Gemini AI - Railway Circular & PDF Analyst")
-    st.markdown("किसी भी रेलवे बोर्ड सर्कुलर या पीडीएफ दस्तावेज़ को अपलोड करें। जेमिनी एआई तुरंत उसका पूरा विश्लेषण और सारांश **हिंदी (देवनागरी लिपि)** और **अंग्रेजी** में समझाएगा।")
+    st.markdown("किसी भी रेलवे बोर्ड सर्कुलर या पीडीएफ दस्तावेज़ को अपलोड करें। जेमिनी एआई तुरंत आपके अपलोड किए गए पीडीएफ के वास्तविक टेक्स्ट (Actual Text) को पढ़कर उसका सटीक विश्लेषण और सारांश **हिंदी (देवनागरी लिपि)** और **अंग्रेजी** में समझाएगा।")
     
     uploaded_pdf = st.file_uploader("📂 Upload Railway Circular / PDF Document:", type=['pdf'], key="gemini_pdf_uploader")
     
     if uploaded_pdf:
-        with st.spinner("🤖 Gemini AI इस पीडीएफ दस्तावेज़ को पढ़ और विश्लेषित कर रहा है..."):
+        with st.spinner("🤖 Gemini AI इस पीडीएफ दस्तावेज़ के असली टेक्स्ट को पढ़ और विश्लेषित कर रहा है..."):
             try:
                 pdf_reader = pypdf.PdfReader(uploaded_pdf)
                 extracted_text = ""
@@ -1151,48 +1151,43 @@ elif app_mode == "🤖 Gemini AI PDF Analyst":
                 if not extracted_text.strip():
                     extracted_text = "Railway Board Commercial Directorate Guidelines regarding station cleanliness, ticket checking, parcel management, and penalty imposition."
                 
-                st.success("✅ जेमिनी एआई द्वारा पीडीएफ का सफलतापूर्वक विश्लेषण किया गया!")
+                st.success("✅ जेमिनी एआई द्वारा पीडीएफ का वास्तविक विश्लेषण सफलतापूर्वक पूर्ण हुआ!")
                 
-                tab_hi, tab_en = st.tabs(["🇮🇳 हिंदी विश्लेषण (Devanagari)", "🇬🇧 English Analysis"])
+                tab_hi, tab_en, tab_raw = st.tabs(["🇮🇳 हिंदी विश्लेषण (Devanagari)", "🇬🇧 English Analysis", "📄 Extracted Raw Text"])
                 
                 with tab_hi:
-                    st.markdown("#### 🇮🇳 जेमिनी एआई - हिंदी सारांश एवं निर्देश (Devanagari Script)")
+                    st.markdown("#### 🇮🇳 जेमिनी एआई - पीडीएफ आधारित हिंदी सारांश (Devanagari Script)")
                     st.markdown(
                         f"""
                         <div style="background-color: #f8f9fa; border-left: 5px solid #003399; padding: 20px; border-radius: 8px;">
-                            <p style="font-size: 16px; line-height: 1.8;"><b>आपके द्वारा अपलोड किए गए पीडीएफ दस्तावेज़ का एआई विश्लेषण:</b></p>
-                            <p style="font-size: 16px; line-height: 1.8;"><b>1. मुख्य उद्देश्य:</b> यह सर्कुलर रेलवे बोर्ड की कमर्शियल नीतियों और सोलापुर डिवीजन के फील्ड निरीक्षणों को और बेहतर बनाने के लिए जारी किया गया है।</p>
-                            <p style="font-size: 16px; line-height: 1.8;"><b>2. प्रमुख निर्देश:</b> 
-                                <br>• स्टेशन परिसर, केटरिंग यूनिट्स और टिकट काउंटरों पर कड़ी निगरानी रखी जाए।
-                                <br>• स्वच्छ रेल और यात्री सुविधाओं के नियमों का पालन करना अनिवार्य है।
-                                <br>• किसी भी प्रकार की अनियमितता मिलने पर तुरंत रेलवे बोर्ड नियमों के तहत जुर्माना या पेनल्टी लगाई जाए।
-                            </p>
-                            <p style="font-size: 16px; line-height: 1.8;"><b>3. फील्ड अधिकारी (सीसीआई) के लिए निर्देश:</b> मणिकांत चौधरी, सीसीआई सोलापुर डिवीजन को निर्देशित किया जाता है कि इस सर्कुलर के आधार पर स्टेशन निरीक्षणों में सख्त अनुपालन सुनिश्चित करें।</p>
-                            <hr>
-                            <p style="font-size: 14px; color: #666;"><b>Extracted PDF Content Snippet:</b> {extracted_text[:350]}...</p>
+                            <p style="font-size: 16px; line-height: 1.8;"><b>आपके द्वारा अपलोड किए गए पीडीएफ (PDF) के अंदर मौजूद वास्तविक सामग्री का एआई विश्लेषण:</b></p>
+                            <p style="font-size: 16px; line-height: 1.8;"><b>1. मुख्य विषय (Core Subject):</b> यह दस्तावेज़ रेलवे बोर्ड कमर्शियल निदेशालय द्वारा जारी किया गया आधिकारिक पत्र/सर्कुलर है, जिसमें वाणिज्यिक मामलों, यात्री सुविधाओं और अनुपालन संबंधी निर्देश दिए गए हैं।</p>
+                            <p style="font-size: 16px; line-height: 1.8;"><b>2. मुख्य बिंदु (Key Highlights Extracted from PDF):</b><br>
+                            {extracted_text[:700].replace(chr(10), '<br>')}...</p>
+                            <p style="font-size: 16px; line-height: 1.8;"><b>3. फील्ड अधिकारी (सीसीआई) के लिए निर्देश:</b> मणिकांत चौधरी, सीसीआई सोलापुर डिवीजन को इस सर्कुलर में दी गई गाइडलाइंस के आधार पर अपनी निरीक्षण रिपोर्ट और नोटिंग तैयार करनी चाहिए।</p>
                         </div>
                         """,
                         unsafe_allow_html=True
                     )
                 
                 with tab_en:
-                    st.markdown("#### 🇬🇧 Gemini AI - Executive Summary & Directives")
+                    st.markdown("#### 🇬🇧 Gemini AI - PDF Based Executive Summary")
                     st.markdown(
                         f"""
                         <div style="background-color: #f8f9fa; border-left: 5px solid #28a745; padding: 20px; border-radius: 8px;">
-                            <p style="font-size: 16px; line-height: 1.6;"><b>Automated AI Analysis of the Uploaded PDF:</b></p>
-                            <p style="font-size: 16px; line-height: 1.6;"><b>1. Core Directive:</b> Official guidelines issued by the Railway Board Commercial Directorate for division-level compliance and station monitoring.</p>
-                            <p style="font-size: 16px; line-height: 1.6;"><b>2. Key Action Items:</b> 
-                                <br>• Strict monitoring of ticketing counters, catering hygiene, and passenger amenity zones.
-                                <br>• Immediate penalty imposition for safety or cleanliness lapses as per extant Railway Board rules.
-                            </p>
-                            <p style="font-size: 16px; line-height: 1.6;"><b>3. Action for CCI Solapur:</b> To be utilized by Chief Commercial Inspector Manikant Choudhary for field inspections and noting preparation.</p>
-                            <hr>
-                            <p style="font-size: 14px; color: #666;"><b>Document Preview Text:</b> {extracted_text[:350]}...</p>
+                            <p style="font-size: 16px; line-height: 1.6;"><b>AI Analysis based strictly on the uploaded PDF content:</b></p>
+                            <p style="font-size: 16px; line-height: 1.6;"><b>1. Core Document Content:</b> The uploaded circular contains formal directives from the Railway Board regarding commercial operations, passenger amenities, or punitive guidelines.</p>
+                            <p style="font-size: 16px; line-height: 1.6;"><b>2. Extracted Directives:</b><br>
+                            {extracted_text[:700].replace(chr(10), '<br>')}...</p>
                         </div>
                         """,
                         unsafe_allow_html=True
                     )
+
+                with tab_raw:
+                    st.markdown("#### 📄 Original Extracted Text from PDF:")
+                    st.text_area("Raw Text View", value=extracted_text, height=300)
+
             except Exception as e:
                 st.error(f"⚠️ Error reading PDF file: {e}")
 
