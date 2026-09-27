@@ -15,6 +15,56 @@ from docx import Document
 
 st.set_page_config(page_title="Master Portal - CCI Manikant Choudhary (Solapur)", layout="wide")
 
+# ==================== WORLD-CLASS CUSTOM STYLING & BIG FONTS ====================
+st.markdown("""
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+        html, body, [class*="css"] {
+            font-family: 'Poppins', sans-serif;
+        }
+        /* Main Header Styling */
+        .main-header {
+            background: linear-gradient(135deg, #003399 0%, #002266 100%);
+            padding: 24px;
+            border-radius: 12px;
+            text-align: center;
+            color: white;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 15px rgba(0, 51, 153, 0.3);
+        }
+        .main-header h2 {
+            font-size: 28px !important;
+            font-weight: 700 !important;
+            margin: 0;
+            letter-spacing: 0.5px;
+        }
+        .main-header p {
+            font-size: 16px !important;
+            margin-top: 8px !important;
+            font-weight: 500;
+        }
+        /* Card Containers */
+        .executive-card {
+            background-color: #f8f9fa;
+            border-left: 5px solid #003399;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        /* Larger Subheadings */
+        h3 {
+            font-size: 22px !important;
+            font-weight: 600 !important;
+            color: #003399 !important;
+        }
+        h4 {
+            font-size: 18px !important;
+            font-weight: 600 !important;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
 # ==================== DATABASE SETUP ====================
 def init_db():
     conn = sqlite3.connect('railway_history.db', check_same_thread=False)
@@ -82,10 +132,10 @@ def get_all_letters():
 # ==================== OFFICIAL HEADER & BRANDING ====================
 st.markdown(
     """
-    <div style="background-color: #003399; padding: 18px; border-radius: 8px; text-align: center; color: white; margin-bottom: 20px;">
-        <h2 style="margin: 0; font-size: 24px;">CENTRAL RAILWAY - SOLAPUR DIVISION</h2>
-        <p style="margin: 5px 0 0 0; font-size: 15px; font-weight: bold; letter-spacing: 0.5px;">OFFICE OF THE SR. DIVISIONAL COMMERCIAL MANAGER (COMMERCIAL & CLEANLINESS DIRECTORATE)</p>
-        <p style="margin: 3px 0 0 0; font-size: 13px; color: #ffeb3b;">MASTER INSPECTION PORTAL | CHIEF COMMERCIAL INSPECTOR (CCI): MANIKANT CHOUDHARY</p>
+    <div class="main-header">
+        <h2>CENTRAL RAILWAY - SOLAPUR DIVISION</h2>
+        <p>OFFICE OF THE SR. DIVISIONAL COMMERCIAL MANAGER (COMMERCIAL & CLEANLINESS DIRECTORATE)</p>
+        <p style="font-size: 14px !important; color: #ffeb3b; margin-top: 4px !important;">MASTER INSPECTION PORTAL | CHIEF COMMERCIAL INSPECTOR (CCI): MANIKANT CHOUDHARY</p>
     </div>
     """,
     unsafe_allow_html=True
@@ -163,7 +213,7 @@ def process_image(img_bytes):
     img = enhancer.enhance(1.05)
     
     img_byte_arr = io.BytesIO()
-    img.save(img_byte_arr, format='JPEG', quality=80, optimize=True)
+    img.save(img_byte_arr, format='JPEG', quality=85, optimize=True)
     img_byte_arr.seek(0)
     return img_byte_arr
 
@@ -676,7 +726,7 @@ def create_dossier_pdf(records):
 
 # ==================== APP MODE 1: INSPECTION REPORT ====================
 if app_mode == "🔍 Master Field Inspection & Evidence":
-    st.markdown("### 1. Enter Station / Train & Directorate Focus")
+    st.markdown("### 🔍 1. Enter Station / Train & Directorate Focus")
     col_s1, col_s2 = st.columns(2)
     with col_s1:
         station_input = st.text_input("Station / Train No. & Name:", value=st.session_state.get('station_input', ''), placeholder="e.g. Solapur Station / Train 11026", key='station_input_field')
@@ -691,10 +741,10 @@ if app_mode == "🔍 Master Field Inspection & Evidence":
         ], key='inspection_type_field')
 
     st.markdown("---")
-    st.markdown("### 2. Choose Assembly Mode & Bulk Upload Photos")
+    st.markdown("### 📂 2. Choose Assembly Mode & Bulk Upload Photos")
     layout_mode = st.radio("Select Report Layout Style:", ["Before & After Pairs (Comparison)", "Individual / Single Photos (Flexible Evidence)"], key='layout_mode_field')
     
-    uploaded_files = st.file_uploader("📂 Upload Bulk Evidentiary Photos (Select multiple JPG/PNG/ZIP files at once):", type=['zip', 'jpg', 'jpeg', 'png'], accept_multiple_files=True, key='bulk_uploader')
+    uploaded_files = st.file_uploader("Upload Bulk Evidentiary Photos (Select multiple JPG/PNG/ZIP files at once):", type=['zip', 'jpg', 'jpeg', 'png'], accept_multiple_files=True, key='bulk_uploader')
 
     if uploaded_files:
         image_files = []
@@ -895,7 +945,7 @@ if app_mode == "🔍 Master Field Inspection & Evidence":
         st.markdown("---")
         st.markdown("### 📲 Direct WhatsApp Share with Sr. DCM Office")
         wa_msg = urllib.parse.quote(f"Respected Sir, Inspection Report for {st_display_name} has been prepared and is ready for submission.")
-        st.markdown(f'<a href="https://api.whatsapp.com/send?text={wa_msg}" target="_blank"><button style="background-color:#25D366;color:white;padding:10px 20px;border:none;border-radius:5px;font-size:16px;cursor:pointer;">💬 Share on WhatsApp</button></a>', unsafe_allow_html=True)
+        st.markdown(f'<a href="https://api.whatsapp.com/send?text={wa_msg}" target="_blank"><button style="background-color:#25D366;color:white;padding:12px 24px;border:none;border-radius:6px;font-size:16px;cursor:pointer;font-weight:bold;">💬 Share on WhatsApp</button></a>', unsafe_allow_html=True)
 
 # ==================== APP MODE 2: NOTING & LETTER DRAFTING ====================
 elif app_mode == "📝 Official Noting & Fine Proposal":
