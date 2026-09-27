@@ -13,6 +13,7 @@ import urllib.request
 import urllib.error
 from docx import Document
 import pypdf
+import openai
 
 st.set_page_config(page_title="Master Portal - CCI Manikant Choudhary (Solapur)", layout="wide")
 
@@ -161,7 +162,7 @@ with st.sidebar:
         "📊 Division Commercial Analytics", 
         "📈 Monthly Dossier & Performance",
         "🌐 Railway Board Circular Directory",
-        "🤖 Gemini AI PDF Analyst",
+        "🤖 ChatGPT & PDF Analyst",
         "📱 Portal QR Code"
     ])
     st.markdown("---")
@@ -1129,15 +1130,16 @@ elif app_mode == "🌐 Railway Board Circular Directory":
         full_link = link if link.startswith('http') else f"https://indianrailways.gov.in{link}"
         st.markdown(f"- [{full_link}]({full_link})")
 
-# ==================== APP MODE 7: GEMINI AI PDF ANALYST ====================
-elif app_mode == "🤖 Gemini AI PDF Analyst":
-    st.markdown("### 🤖 Gemini AI - Railway Circular & PDF Analyst")
-    st.markdown("किसी भी रेलवे बोर्ड सर्कुलर या पीडीएफ दस्तावेज़ को अपलोड करें। यह सीधे आपके द्वारा अपलोड किए गए पीडीएफ के वास्तविक टेक्स्ट को पढ़कर उसका सटीक सारांश **हिंदी (देवनागरी लिपि)** और **अंग्रेजी** में दिखाएगा।")
+# ==================== APP MODE 7: CHATGPT & PDF ANALYST ====================
+elif app_mode == "🤖 ChatGPT & PDF Analyst":
+    st.markdown("### 🤖 ChatGPT (OpenAI) - Railway Circular & PDF Analyst")
+    st.markdown("किसी भी रेलवे बोर्ड सर्कुलर या पीडीएफ दस्तावेज़ को अपलोड करें। OpenAI (ChatGPT) सीधे पीडीएफ के टेक्स्ट को पढ़कर उसका सटीक सारांश **हिंदी (देवनागरी लिपि)** और **अंग्रेजी** में समझाएगा।")
     
-    uploaded_pdf = st.file_uploader("📂 Upload Railway Circular / PDF Document:", type=['pdf'], key="gemini_pdf_uploader")
+    openai_api_key = st.text_input("🔑 Enter OpenAI API Key:", type="password", value="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", key="openai_key_input")
+    uploaded_pdf = st.file_uploader("📂 Upload Railway Circular / PDF Document:", type=['pdf'], key="chatgpt_pdf_uploader")
     
     if uploaded_pdf:
-        with st.spinner("🤖 PDF दस्तावेज़ के असली टेक्स्ट को पढ़ा जा रहा है..."):
+        with st.spinner("🤖 PDF दस्तावेज़ के टेक्स्ट को निकाला जा रहा है..."):
             try:
                 pdf_reader = pypdf.PdfReader(uploaded_pdf)
                 extracted_text = ""
@@ -1149,29 +1151,61 @@ elif app_mode == "🤖 Gemini AI PDF Analyst":
                 if not extracted_text.strip():
                     extracted_text = "Railway Board Commercial Directorate Guidelines regarding station cleanliness, ticket checking, parcel management, and penalty imposition."
                 
-                st.success("✅ पीडीएफ का वास्तविक विश्लेषण सफलतापूर्वक पूर्ण हुआ!")
+                hindi_summary = ""
+                english_summary = ""
+                
+                if openai_api_key:
+                    with st.spinner("🤖 ChatGPT (OpenAI) is analyzing the PDF content..."):
+                        try:
+                            client = openai.OpenAI(api_key=openai_api_key)
+                            
+                            # Hindi Request
+                            response_hi = client.chat.completions.create(
+                                model="gpt-3.5-turbo",
+                                messages=[
+                                    {"role": "system", "content": "You are an expert railway commercial analyst. Analyze the provided text and write a comprehensive executive summary in Devanagari Hindi script."},
+                                    {"role": "user", "content": extracted_text[:4000]}
+                                ]
+                            )
+                            hindi_summary = response_hi.choices[0].message.content
+                            
+                            # English Request
+                            response_en = client.chat.completions.create(
+                                model="gpt-3.5-turbo",
+                                messages=[
+                                    {"role": "system", "content": "You are an expert railway commercial analyst. Analyze the provided text and write a professional executive summary in English."},
+                                    {"role": "user", "content": extracted_text[:4000]}
+                                ]
+                            )
+                            english_summary = response_en.choices[0].message.content
+                        except Exception as api_err:
+                            hindi_summary = f"API Error: {api_err}. Please check your OpenAI API key."
+                            english_summary = f"API Error: {api_err}."
+                else:
+                    hindi_summary = "⚠️ Please enter your OpenAI API key above to get AI analysis."
+                    english_summary = "⚠️ Please enter your OpenAI API key above to get AI analysis."
+
+                st.success("✅ विश्लेषण पूर्ण हुआ!")
                 
                 tab_hi, tab_en, tab_raw = st.tabs(["🇮🇳 हिंदी विश्लेषण (Devanagari)", "🇬🇧 English Analysis", "📄 Extracted Raw Text"])
                 
                 with tab_hi:
-                    st.markdown("#### 🇮🇳 पीडीएफ आधारित हिंदी सारांश (Devanagari Script)")
+                    st.markdown("#### 🇮🇳 ChatGPT - हिंदी सारांश (Devanagari Script)")
                     st.markdown(
                         f"""
                         <div style="background-color: #f8f9fa; border-left: 5px solid #003399; padding: 20px; border-radius: 8px;">
-                            <p style="font-size: 16px; line-height: 1.8;"><b>आपके द्वारा अपलोड किए गए पीडीएफ (PDF) की वास्तविक सामग्री:</b></p>
-                            <p style="font-size: 16px; line-height: 1.8;">{extracted_text[:1200].replace(chr(10), '<br>')}</p>
+                            <p style="font-size: 16px; line-height: 1.8;">{hindi_summary.replace(chr(10), '<br>')}</p>
                         </div>
                         """,
                         unsafe_allow_html=True
                     )
                 
                 with tab_en:
-                    st.markdown("#### 🇬🇧 English Analysis & Summary")
+                    st.markdown("#### 🇬🇧 ChatGPT - English Analysis")
                     st.markdown(
                         f"""
                         <div style="background-color: #f8f9fa; border-left: 5px solid #28a745; padding: 20px; border-radius: 8px;">
-                            <p style="font-size: 16px; line-height: 1.6;"><b>Extracted Text Content from PDF:</b></p>
-                            <p style="font-size: 16px; line-height: 1.6;">{extracted_text[:1200].replace(chr(10), '<br>')}</p>
+                            <p style="font-size: 16px; line-height: 1.6;">{english_summary.replace(chr(10), '<br>')}</p>
                         </div>
                         """,
                         unsafe_allow_html=True
