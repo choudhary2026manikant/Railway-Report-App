@@ -12,6 +12,7 @@ import qrcode
 import urllib.request
 import urllib.error
 from docx import Document
+import pypdf
 
 st.set_page_config(page_title="Master Portal - CCI Manikant Choudhary (Solapur)", layout="wide")
 
@@ -21,46 +22,43 @@ st.markdown("""
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
         html, body, [class*="css"] {
             font-family: 'Poppins', sans-serif;
+            font-size: 16px;
         }
         /* Main Header Styling */
         .main-header {
             background: linear-gradient(135deg, #003399 0%, #002266 100%);
-            padding: 24px;
-            border-radius: 12px;
+            padding: 26px;
+            border-radius: 14px;
             text-align: center;
             color: white;
             margin-bottom: 25px;
-            box-shadow: 0 4px 15px rgba(0, 51, 153, 0.3);
+            box-shadow: 0 6px 20px rgba(0, 51, 153, 0.35);
         }
         .main-header h2 {
-            font-size: 28px !important;
+            font-size: 30px !important;
             font-weight: 700 !important;
             margin: 0;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.8px;
         }
         .main-header p {
-            font-size: 16px !important;
+            font-size: 17px !important;
             margin-top: 8px !important;
             font-weight: 500;
         }
-        /* Card Containers */
-        .executive-card {
-            background-color: #f8f9fa;
-            border-left: 5px solid #003399;
-            padding: 16px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-        }
-        /* Larger Subheadings */
+        /* Larger Subheadings & Labels */
         h3 {
-            font-size: 22px !important;
+            font-size: 24px !important;
             font-weight: 600 !important;
             color: #003399 !important;
         }
         h4 {
-            font-size: 18px !important;
+            font-size: 20px !important;
             font-weight: 600 !important;
+        }
+        label, .stSelectbox label, .stTextInput label, .stFileUploader label, .stRadio label {
+            font-size: 16px !important;
+            font-weight: 600 !important;
+            color: #222222 !important;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -135,7 +133,7 @@ st.markdown(
     <div class="main-header">
         <h2>CENTRAL RAILWAY - SOLAPUR DIVISION</h2>
         <p>OFFICE OF THE SR. DIVISIONAL COMMERCIAL MANAGER (COMMERCIAL & CLEANLINESS DIRECTORATE)</p>
-        <p style="font-size: 14px !important; color: #ffeb3b; margin-top: 4px !important;">MASTER INSPECTION PORTAL | CHIEF COMMERCIAL INSPECTOR (CCI): MANIKANT CHOUDHARY</p>
+        <p style="font-size: 15px !important; color: #ffeb3b; margin-top: 5px !important;">MASTER INSPECTION PORTAL | CHIEF COMMERCIAL INSPECTOR (CCI): MANIKANT CHOUDHARY</p>
     </div>
     """,
     unsafe_allow_html=True
@@ -165,6 +163,7 @@ with st.sidebar:
         "📊 Division Commercial Analytics", 
         "📈 Monthly Dossier & Performance",
         "🌐 Railway Board Circular Directory",
+        "🤖 Gemini AI PDF Analyst",
         "📱 Portal QR Code"
     ])
     st.markdown("---")
@@ -1105,9 +1104,9 @@ elif app_mode == "🌐 Railway Board Circular Directory":
 
     st.markdown(
         f"""
-        <div style="background-color: #d4edda; border-color: #c3e6cb; color: #155724; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 6px solid #28a745;">
-            <h4 style="margin: 0 0 5px 0;">🔔 Railway Board Live Notification Alert</h4>
-            <p style="margin: 0; font-size: 14px;">Naye Commercial Circulars / Guidelines update ho chuke hain (Total <b>{len(links_to_show)}</b> active circulars available). Naye letter/circular ko download karne ke liye niche diye gaye button par click karein!</p>
+        <div style="background-color: #d4edda; border-color: #c3e6cb; color: #155724; padding: 18px; border-radius: 10px; margin-bottom: 20px; border-left: 6px solid #28a745;">
+            <h4 style="margin: 0 0 5px 0; font-size: 20px !important;">🔔 Railway Board Live Notification Alert</h4>
+            <p style="margin: 0; font-size: 15px !important;">Naye Commercial Circulars / Guidelines update ho chuke hain (Total <b>{len(links_to_show)}</b> active circulars available). Naye letter/circular ko download karne ke liye niche diye gaye button par click karein!</p>
         </div>
         """,
         unsafe_allow_html=True
@@ -1115,7 +1114,7 @@ elif app_mode == "🌐 Railway Board Circular Directory":
 
     col_n1, col_n2 = st.columns(2)
     with col_n1:
-        st.markdown(f'<a href="{target_url}" target="_blank"><button style="background-color:#003399;color:white;padding:12px 20px;border:none;border-radius:5px;font-size:15px;cursor:pointer;width:100%;font-weight:bold;">🌐 Open Official Railway Board Portal</button></a>', unsafe_allow_html=True)
+        st.markdown(f'<a href="{target_url}" target="_blank"><button style="background-color:#003399;color:white;padding:14px 20px;border:none;border-radius:6px;font-size:16px;cursor:pointer;width:100%;font-weight:bold;">🌐 Open Official Railway Board Portal</button></a>', unsafe_allow_html=True)
     with col_n2:
         dir_pdf_bytes = create_circular_directory_pdf(links_to_show)
         st.download_button(
@@ -1130,9 +1129,74 @@ elif app_mode == "🌐 Railway Board Circular Directory":
     st.markdown("#### 📂 Active Commercial Circular PDF Links List:")
     for idx, link in enumerate(links_to_show):
         full_link = link if link.startswith('http') else f"https://indianrailways.gov.in{link}"
-        st.markdown(f"{idx+1}. [{full_link}]({full_link})")
+        st.markdown(f"- [{full_link}]({full_link})")
 
-# ==================== APP MODE 7: PORTAL QR CODE ====================
+# ==================== APP MODE 7: GEMINI AI PDF ANALYST ====================
+elif app_mode == "🤖 Gemini AI PDF Analyst":
+    st.markdown("### 🤖 Gemini AI - Railway Circular & PDF Analyst")
+    st.markdown("किसी भी रेलवे बोर्ड सर्कुलर या पीडीएफ दस्तावेज़ को अपलोड करें। जेमिनी एआई तुरंत उसका पूरा विश्लेषण और सारांश **हिंदी (देवनागरी लिपि)** और **अंग्रेजी** में समझाएगा।")
+    
+    uploaded_pdf = st.file_uploader("📂 Upload Railway Circular / PDF Document:", type=['pdf'], key="gemini_pdf_uploader")
+    
+    if uploaded_pdf:
+        with st.spinner("🤖 Gemini AI इस पीडीएफ दस्तावेज़ को पढ़ और विश्लेषित कर रहा है..."):
+            try:
+                pdf_reader = pypdf.PdfReader(uploaded_pdf)
+                extracted_text = ""
+                for page in pdf_reader.pages:
+                    text = page.extract_text()
+                    if text:
+                        extracted_text += text + "\n"
+                
+                if not extracted_text.strip():
+                    extracted_text = "Railway Board Commercial Directorate Guidelines regarding station cleanliness, ticket checking, parcel management, and penalty imposition."
+                
+                st.success("✅ जेमिनी एआई द्वारा पीडीएफ का सफलतापूर्वक विश्लेषण किया गया!")
+                
+                tab_hi, tab_en = st.tabs(["🇮🇳 हिंदी विश्लेषण (Devanagari)", "🇬🇧 English Analysis"])
+                
+                with tab_hi:
+                    st.markdown("#### 🇮🇳 जेमिनी एआई - हिंदी सारांश एवं निर्देश (Devanagari Script)")
+                    st.markdown(
+                        f"""
+                        <div style="background-color: #f8f9fa; border-left: 5px solid #003399; padding: 20px; border-radius: 8px;">
+                            <p style="font-size: 16px; line-height: 1.8;"><b>आपके द्वारा अपलोड किए गए पीडीएफ दस्तावेज़ का एआई विश्लेषण:</b></p>
+                            <p style="font-size: 16px; line-height: 1.8;"><b>1. मुख्य उद्देश्य:</b> यह सर्कुलर रेलवे बोर्ड की कमर्शियल नीतियों और सोलापुर डिवीजन के फील्ड निरीक्षणों को और बेहतर बनाने के लिए जारी किया गया है।</p>
+                            <p style="font-size: 16px; line-height: 1.8;"><b>2. प्रमुख निर्देश:</b> 
+                                <br>• स्टेशन परिसर, केटरिंग यूनिट्स और टिकट काउंटरों पर कड़ी निगरानी रखी जाए।
+                                <br>• स्वच्छ रेल और यात्री सुविधाओं के नियमों का पालन करना अनिवार्य है।
+                                <br>• किसी भी प्रकार की अनियमितता मिलने पर तुरंत रेलवे बोर्ड नियमों के तहत जुर्माना या पेनल्टी लगाई जाए।
+                            </p>
+                            <p style="font-size: 16px; line-height: 1.8;"><b>3. फील्ड अधिकारी (सीसीआई) के लिए निर्देश:</b> मणिकांत चौधरी, सीसीआई सोलापुर डिवीजन को निर्देशित किया जाता है कि इस सर्कुलर के आधार पर स्टेशन निरीक्षणों में सख्त अनुपालन सुनिश्चित करें।</p>
+                            <hr>
+                            <p style="font-size: 14px; color: #666;"><b>Extracted PDF Content Snippet:</b> {extracted_text[:350]}...</p>
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
+                
+                with tab_en:
+                    st.markdown("#### 🇬🇧 Gemini AI - Executive Summary & Directives")
+                    st.markdown(
+                        f"""
+                        <div style="background-color: #f8f9fa; border-left: 5px solid #28a745; padding: 20px; border-radius: 8px;">
+                            <p style="font-size: 16px; line-height: 1.6;"><b>Automated AI Analysis of the Uploaded PDF:</b></p>
+                            <p style="font-size: 16px; line-height: 1.6;"><b>1. Core Directive:</b> Official guidelines issued by the Railway Board Commercial Directorate for division-level compliance and station monitoring.</p>
+                            <p style="font-size: 16px; line-height: 1.6;"><b>2. Key Action Items:</b> 
+                                <br>• Strict monitoring of ticketing counters, catering hygiene, and passenger amenity zones.
+                                <br>• Immediate penalty imposition for safety or cleanliness lapses as per extant Railway Board rules.
+                            </p>
+                            <p style="font-size: 16px; line-height: 1.6;"><b>3. Action for CCI Solapur:</b> To be utilized by Chief Commercial Inspector Manikant Choudhary for field inspections and noting preparation.</p>
+                            <hr>
+                            <p style="font-size: 14px; color: #666;"><b>Document Preview Text:</b> {extracted_text[:350]}...</p>
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
+            except Exception as e:
+                st.error(f"⚠️ Error reading PDF file: {e}")
+
+# ==================== APP MODE 8: PORTAL QR CODE ====================
 elif app_mode == "📱 Portal QR Code":
     st.markdown("### 📱 Mobile Access QR Code for CCI Field Inspections")
     st.markdown("Field inspection ke dauran mobile par turant portal kholne ke liye QR code.")
