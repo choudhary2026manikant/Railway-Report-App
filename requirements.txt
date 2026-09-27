@@ -6,3 +6,4 @@ docx
 pypdf
 qrcode
 google-generativeai
+openai
