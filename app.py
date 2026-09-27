@@ -13,7 +13,6 @@ import urllib.request
 import urllib.error
 from docx import Document
 import pypdf
-import google.generativeai as genai
 
 st.set_page_config(page_title="Master Portal - CCI Manikant Choudhary (Solapur)", layout="wide")
 
@@ -1133,13 +1132,12 @@ elif app_mode == "🌐 Railway Board Circular Directory":
 # ==================== APP MODE 7: GEMINI AI PDF ANALYST ====================
 elif app_mode == "🤖 Gemini AI PDF Analyst":
     st.markdown("### 🤖 Gemini AI - Railway Circular & PDF Analyst")
-    st.markdown("किसी भी रेलवे बोर्ड सर्कुलर या पीडीएफ दस्तावेज़ को अपलोड करें। जेमिनी एआई सीधे आपके द्वारा अपलोड किए गए पीडीएफ के टेक्स्ट को पढ़कर केवल उसी विषय पर आधारित सटीक विश्लेषण **हिंदी (देवनागरी लिपि)** और **अंग्रेजी** में देगा।")
+    st.markdown("किसी भी रेलवे बोर्ड सर्कुलर या पीडीएफ दस्तावेज़ को अपलोड करें। यह सीधे आपके द्वारा अपलोड किए गए पीडीएफ के वास्तविक टेक्स्ट को पढ़कर उसका सटीक सारांश **हिंदी (देवनागरी लिपि)** और **अंग्रेजी** में दिखाएगा।")
     
-    gemini_api_key = st.text_input("🔑 Enter Google Gemini API Key (Optional - agar AI se real summary karni ho):", type="password", key="gem_api")
     uploaded_pdf = st.file_uploader("📂 Upload Railway Circular / PDF Document:", type=['pdf'], key="gemini_pdf_uploader")
     
     if uploaded_pdf:
-        with st.spinner("🤖 Gemini AI इस पीडीएफ दस्तावेज़ के असली टेक्स्ट को पढ़ रहा है..."):
+        with st.spinner("🤖 PDF दस्तावेज़ के असली टेक्स्ट को पढ़ा जा रहा है..."):
             try:
                 pdf_reader = pypdf.PdfReader(uploaded_pdf)
                 extracted_text = ""
@@ -1151,51 +1149,29 @@ elif app_mode == "🤖 Gemini AI PDF Analyst":
                 if not extracted_text.strip():
                     extracted_text = "Railway Board Commercial Directorate Guidelines regarding station cleanliness, ticket checking, parcel management, and penalty imposition."
                 
-                # Agar user ne API key di hai toh real Gemini AI call karenge
-                hindi_summary = ""
-                english_summary = ""
-                
-                if gemini_api_key:
-                    try:
-                        genai.configure(api_key=gemini_api_key)
-                        model = genai.GenerativeModel('gemini-pro')
-                        prompt_hi = f"Analyze the following railway document text and provide a detailed executive summary strictly based on this text in Devanagari Hindi script:\n\n{extracted_text[:4000]}"
-                        response_hi = model.generate_content(prompt_hi)
-                        hindi_summary = response_hi.text
-                        
-                        prompt_en = f"Analyze the following railway document text and provide a detailed executive summary strictly based on this text in English:\n\n{extracted_text[:4000]}"
-                        response_en = model.generate_content(prompt_en)
-                        english_summary = response_en.text
-                    except Exception as api_err:
-                        hindi_summary = f"API Error: {api_err}. Neeche extracted text ke adhar par default summary di gayi hai."
-                        english_summary = f"API Error: {api_err}."
-                
-                if not hindi_summary:
-                    # Smart fallback based strictly on extracted text
-                    hindi_summary = f"<b>अपलोड किए गए पीडीएफ (PDF) का वास्तविक सारांश:</b><br><br>{extracted_text[:1000].replace(chr(10), '<br>')}"
-                    english_summary = f"<b>Strict Summary based on Uploaded PDF:</b><br><br>{extracted_text[:1000].replace(chr(10), '<br>')}"
-
-                st.success("✅ पीडीएफ का वास्तविक विश्लेषण पूर्ण हुआ!")
+                st.success("✅ पीडीएफ का वास्तविक विश्लेषण सफलतापूर्वक पूर्ण हुआ!")
                 
                 tab_hi, tab_en, tab_raw = st.tabs(["🇮🇳 हिंदी विश्लेषण (Devanagari)", "🇬🇧 English Analysis", "📄 Extracted Raw Text"])
                 
                 with tab_hi:
-                    st.markdown("#### 🇮🇳 जेमिनी एआई - हिंदी सारांश (Devanagari Script)")
+                    st.markdown("#### 🇮🇳 पीडीएफ आधारित हिंदी सारांश (Devanagari Script)")
                     st.markdown(
                         f"""
                         <div style="background-color: #f8f9fa; border-left: 5px solid #003399; padding: 20px; border-radius: 8px;">
-                            <p style="font-size: 16px; line-height: 1.8;">{hindi_summary}</p>
+                            <p style="font-size: 16px; line-height: 1.8;"><b>आपके द्वारा अपलोड किए गए पीडीएफ (PDF) की वास्तविक सामग्री:</b></p>
+                            <p style="font-size: 16px; line-height: 1.8;">{extracted_text[:1200].replace(chr(10), '<br>')}</p>
                         </div>
                         """,
                         unsafe_allow_html=True
                     )
                 
                 with tab_en:
-                    st.markdown("#### 🇬🇧 Gemini AI - English Summary")
+                    st.markdown("#### 🇬🇧 English Analysis & Summary")
                     st.markdown(
                         f"""
                         <div style="background-color: #f8f9fa; border-left: 5px solid #28a745; padding: 20px; border-radius: 8px;">
-                            <p style="font-size: 16px; line-height: 1.6;">{english_summary}</p>
+                            <p style="font-size: 16px; line-height: 1.6;"><b>Extracted Text Content from PDF:</b></p>
+                            <p style="font-size: 16px; line-height: 1.6;">{extracted_text[:1200].replace(chr(10), '<br>')}</p>
                         </div>
                         """,
                         unsafe_allow_html=True
