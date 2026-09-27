@@ -1,6 +1,7 @@
 streamlit
-fpdf
+fpdf2
 python-pptx
-pillow
+Pillow
+docx
+pypdf
 qrcode
-python-docx
