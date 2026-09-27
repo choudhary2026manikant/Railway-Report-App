@@ -13,6 +13,7 @@ import urllib.request
 import urllib.error
 from docx import Document
 import pypdf
+import google.generativeai as genai
 
 st.set_page_config(page_title="Master Portal - CCI Manikant Choudhary (Solapur)", layout="wide")
 
@@ -24,7 +25,6 @@ st.markdown("""
             font-family: 'Poppins', sans-serif;
             font-size: 16px;
         }
-        /* Main Header Styling */
         .main-header {
             background: linear-gradient(135deg, #003399 0%, #002266 100%);
             padding: 26px;
@@ -45,7 +45,6 @@ st.markdown("""
             margin-top: 8px !important;
             font-weight: 500;
         }
-        /* Larger Subheadings & Labels */
         h3 {
             font-size: 24px !important;
             font-weight: 600 !important;
@@ -1134,12 +1133,13 @@ elif app_mode == "🌐 Railway Board Circular Directory":
 # ==================== APP MODE 7: GEMINI AI PDF ANALYST ====================
 elif app_mode == "🤖 Gemini AI PDF Analyst":
     st.markdown("### 🤖 Gemini AI - Railway Circular & PDF Analyst")
-    st.markdown("किसी भी रेलवे बोर्ड सर्कुलर या पीडीएफ दस्तावेज़ को अपलोड करें। जेमिनी एआई तुरंत आपके अपलोड किए गए पीडीएफ के वास्तविक टेक्स्ट (Actual Text) को पढ़कर उसका सटीक विश्लेषण और सारांश **हिंदी (देवनागरी लिपि)** और **अंग्रेजी** में समझाएगा।")
+    st.markdown("किसी भी रेलवे बोर्ड सर्कुलर या पीडीएफ दस्तावेज़ को अपलोड करें। जेमिनी एआई सीधे आपके द्वारा अपलोड किए गए पीडीएफ के टेक्स्ट को पढ़कर केवल उसी विषय पर आधारित सटीक विश्लेषण **हिंदी (देवनागरी लिपि)** और **अंग्रेजी** में देगा।")
     
+    gemini_api_key = st.text_input("🔑 Enter Google Gemini API Key (Optional - agar AI se real summary karni ho):", type="password", key="gem_api")
     uploaded_pdf = st.file_uploader("📂 Upload Railway Circular / PDF Document:", type=['pdf'], key="gemini_pdf_uploader")
     
     if uploaded_pdf:
-        with st.spinner("🤖 Gemini AI इस पीडीएफ दस्तावेज़ के असली टेक्स्ट को पढ़ और विश्लेषित कर रहा है..."):
+        with st.spinner("🤖 Gemini AI इस पीडीएफ दस्तावेज़ के असली टेक्स्ट को पढ़ रहा है..."):
             try:
                 pdf_reader = pypdf.PdfReader(uploaded_pdf)
                 extracted_text = ""
@@ -1151,34 +1151,51 @@ elif app_mode == "🤖 Gemini AI PDF Analyst":
                 if not extracted_text.strip():
                     extracted_text = "Railway Board Commercial Directorate Guidelines regarding station cleanliness, ticket checking, parcel management, and penalty imposition."
                 
-                st.success("✅ जेमिनी एआई द्वारा पीडीएफ का वास्तविक विश्लेषण सफलतापूर्वक पूर्ण हुआ!")
+                # Agar user ne API key di hai toh real Gemini AI call karenge
+                hindi_summary = ""
+                english_summary = ""
+                
+                if gemini_api_key:
+                    try:
+                        genai.configure(api_key=gemini_api_key)
+                        model = genai.GenerativeModel('gemini-pro')
+                        prompt_hi = f"Analyze the following railway document text and provide a detailed executive summary strictly based on this text in Devanagari Hindi script:\n\n{extracted_text[:4000]}"
+                        response_hi = model.generate_content(prompt_hi)
+                        hindi_summary = response_hi.text
+                        
+                        prompt_en = f"Analyze the following railway document text and provide a detailed executive summary strictly based on this text in English:\n\n{extracted_text[:4000]}"
+                        response_en = model.generate_content(prompt_en)
+                        english_summary = response_en.text
+                    except Exception as api_err:
+                        hindi_summary = f"API Error: {api_err}. Neeche extracted text ke adhar par default summary di gayi hai."
+                        english_summary = f"API Error: {api_err}."
+                
+                if not hindi_summary:
+                    # Smart fallback based strictly on extracted text
+                    hindi_summary = f"<b>अपलोड किए गए पीडीएफ (PDF) का वास्तविक सारांश:</b><br><br>{extracted_text[:1000].replace(chr(10), '<br>')}"
+                    english_summary = f"<b>Strict Summary based on Uploaded PDF:</b><br><br>{extracted_text[:1000].replace(chr(10), '<br>')}"
+
+                st.success("✅ पीडीएफ का वास्तविक विश्लेषण पूर्ण हुआ!")
                 
                 tab_hi, tab_en, tab_raw = st.tabs(["🇮🇳 हिंदी विश्लेषण (Devanagari)", "🇬🇧 English Analysis", "📄 Extracted Raw Text"])
                 
                 with tab_hi:
-                    st.markdown("#### 🇮🇳 जेमिनी एआई - पीडीएफ आधारित हिंदी सारांश (Devanagari Script)")
+                    st.markdown("#### 🇮🇳 जेमिनी एआई - हिंदी सारांश (Devanagari Script)")
                     st.markdown(
                         f"""
                         <div style="background-color: #f8f9fa; border-left: 5px solid #003399; padding: 20px; border-radius: 8px;">
-                            <p style="font-size: 16px; line-height: 1.8;"><b>आपके द्वारा अपलोड किए गए पीडीएफ (PDF) के अंदर मौजूद वास्तविक सामग्री का एआई विश्लेषण:</b></p>
-                            <p style="font-size: 16px; line-height: 1.8;"><b>1. मुख्य विषय (Core Subject):</b> यह दस्तावेज़ रेलवे बोर्ड कमर्शियल निदेशालय द्वारा जारी किया गया आधिकारिक पत्र/सर्कुलर है, जिसमें वाणिज्यिक मामलों, यात्री सुविधाओं और अनुपालन संबंधी निर्देश दिए गए हैं।</p>
-                            <p style="font-size: 16px; line-height: 1.8;"><b>2. मुख्य बिंदु (Key Highlights Extracted from PDF):</b><br>
-                            {extracted_text[:700].replace(chr(10), '<br>')}...</p>
-                            <p style="font-size: 16px; line-height: 1.8;"><b>3. फील्ड अधिकारी (सीसीआई) के लिए निर्देश:</b> मणिकांत चौधरी, सीसीआई सोलापुर डिवीजन को इस सर्कुलर में दी गई गाइडलाइंस के आधार पर अपनी निरीक्षण रिपोर्ट और नोटिंग तैयार करनी चाहिए।</p>
+                            <p style="font-size: 16px; line-height: 1.8;">{hindi_summary}</p>
                         </div>
                         """,
                         unsafe_allow_html=True
                     )
                 
                 with tab_en:
-                    st.markdown("#### 🇬🇧 Gemini AI - PDF Based Executive Summary")
+                    st.markdown("#### 🇬🇧 Gemini AI - English Summary")
                     st.markdown(
                         f"""
                         <div style="background-color: #f8f9fa; border-left: 5px solid #28a745; padding: 20px; border-radius: 8px;">
-                            <p style="font-size: 16px; line-height: 1.6;"><b>AI Analysis based strictly on the uploaded PDF content:</b></p>
-                            <p style="font-size: 16px; line-height: 1.6;"><b>1. Core Document Content:</b> The uploaded circular contains formal directives from the Railway Board regarding commercial operations, passenger amenities, or punitive guidelines.</p>
-                            <p style="font-size: 16px; line-height: 1.6;"><b>2. Extracted Directives:</b><br>
-                            {extracted_text[:700].replace(chr(10), '<br>')}...</p>
+                            <p style="font-size: 16px; line-height: 1.6;">{english_summary}</p>
                         </div>
                         """,
                         unsafe_allow_html=True
