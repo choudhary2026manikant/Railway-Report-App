@@ -192,10 +192,11 @@ RAW_LOCATIONS = [
     "Foot Over Bridge (FOB) & Escalators / Lifts", "Train Engine & Coach Vestibule Area", "Station Master Office & Control Room"
 ]
 RAW_LOCATIONS.sort()
-LOCATION_OPTIONS = ["-- Select Commercial/Amenity Location --"] + RAW_LOCATIONS
+LOCATION_OPTIONS = ["-- Select Commercial/Amenity Location --", "🌐 [ALL] Select All Locations (Entire Station & Train Area)"] + RAW_LOCATIONS
 
 FINE_PRESETS = [
     "-- Select Railway Board Fine / Penalty Rule --",
+    "⚖️ [ALL] All Applicable Railway Board Fine Rules & Clauses Combined",
     "Catering Hygiene & Quality Violation (RB Circular No. 12/2022) - Rs. 10,000/-",
     "Unauthorised Vending / Hawking inside Station/Train (Sec 144/147) - Rs. 5,000/-",
     "Platform Cleanliness & Waste Management Default (Swachh Rail Policy) - Rs. 25,000/-",
@@ -966,7 +967,7 @@ elif app_mode == "📝 Official Noting & Fine Proposal":
     if st.button("🚀 Generate Official Noting (PDF)", type="primary"):
         if d_subject:
             save_letter_to_db(d_subject, d_recipient, d_content)
-            loc_str = d_loc if d_loc != "-- Select Commercial/Amenity Location --" else "Solapur Division Area"
+            loc_str = d_loc if d_loc != "-- Select Commercial/Amenity Location --" else "Solapur Division Area (All Locations)"
             fine_str = d_fine_rule if d_fine_rule != "-- Select Railway Board Fine / Penalty Rule --" else ""
             
             st.session_state['noting_pdf'] = create_noting_pdf(d_subject, d_recipient, d_content, d_photos_bytes_list, loc_str, fine_str)
