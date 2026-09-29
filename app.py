@@ -1,16 +1,16 @@
-import os
-from dotenv import load_dotenv
-load_dotenv()
-SECURE_PASSWORD = os.getenv("PORTAL_PASSWORD", "Railway@2026")
-GEMINI_DEFAULT_KEY = os.getenv("GEMINI_API_KEY", "")
 import streamlit as st
 import io, zipfile, re, urllib.parse, urllib.request, urllib.error
 import pypdf
 import google.generativeai as genai
 from datetime import datetime
+import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Import modular files
-from database import init_db, save_inspection_to_db, get_all_inspections, delete_inspection_from_db, save_letter_to_db, get_all_letters
+from database import init_db, verify_user_login, save_inspection_to_db, get_all_inspections, delete_inspection_from_db, save_letter_to_db, get_all_letters
 from utils import process_image, get_image_info, create_pdf, create_noting_pdf
 
 st.set_page_config(page_title="Master Portal - CCI Manikant Choudhary (Solapur)", layout="wide")
@@ -57,19 +57,26 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# ==================== SECURE PASSWORD PROTECTION ====================
+# ==================== SECURE ROLE-BASED LOGIN ====================
 if "authenticated" not in st.session_state:
     st.session_state["authenticated"] = False
 
 if not st.session_state["authenticated"]:
-    st.markdown("### 🔐 Secure Official Login")
-    pwd_input = st.text_input("Enter Security Password:", type="password")
-    if st.button("Login to Portal", type="primary"):
-        if pwd_input == "Railway@2026":
-            st.session_state["authenticated"] = True
-            st.rerun()
-        else:
-            st.error("❌ Invalid Password! Please enter correct credentials.")
+    st.markdown("### 🔐 Secure Official Railway Login")
+    col_l1, col_l2 = st.columns(2)
+    with col_l1:
+        username_input = st.text_input("Username (e.g. manikant / srdcm):")
+        pwd_input = st.text_input("Password:", type="password")
+        if st.button("Login to Portal", type="primary"):
+            role = verify_user_login(username_input, pwd_input)
+            if role:
+                st.session_state["authenticated"] = True
+                st.session_state["user_role"] = role
+                st.session_state["username"] = username_input
+                st.success(f"✅ Login Successful as {role}!")
+                st.rerun()
+            else:
+                st.error("❌ Invalid Username or Password!")
     st.stop()
 
 with st.sidebar:
@@ -84,7 +91,7 @@ with st.sidebar:
     ])
     st.markdown("---")
     st.markdown("**Officer Profile:**")
-    st.markdown("`Manikant Choudhary`\n\n`Chief Commercial Inspector`\n\n`Solapur Division, C.Rly.`")
+    st.markdown(f"`{st.session_state.get('username', 'User').upper()}`\n\nRole: `{st.session_state.get('user_role', 'CCI')}`\n\n`Solapur Division, C.Rly.`")
     if st.button("🔒 Logout"):
         st.session_state["authenticated"] = False
         st.rerun()
