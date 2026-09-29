@@ -125,6 +125,13 @@ def get_all_letters():
     conn.close()
     return rows
 
+# ==================== HELPER TO CLEAN TEXT FOR FPDF ====================
+def clean_text_for_pdf(text):
+    if not text:
+        return ""
+    # Remove non-latin1 characters / emojis / symbols to prevent FPDFUnicodeEncodingException
+    return ''.join(c for c in text if ord(c) < 256)
+
 # ==================== OFFICIAL HEADER & BRANDING ====================
 st.markdown(
     """
@@ -192,11 +199,11 @@ RAW_LOCATIONS = [
     "Foot Over Bridge (FOB) & Escalators / Lifts", "Train Engine & Coach Vestibule Area", "Station Master Office & Control Room"
 ]
 RAW_LOCATIONS.sort()
-LOCATION_OPTIONS = ["-- Select Commercial/Amenity Location --", "🌐 [ALL] Select All Locations (Entire Station & Train Area)"] + RAW_LOCATIONS
+LOCATION_OPTIONS = ["-- Select Commercial/Amenity Location --", "[ALL] Select All Locations (Entire Station & Train Area)"] + RAW_LOCATIONS
 
 FINE_PRESETS = [
     "-- Select Railway Board Fine / Penalty Rule --",
-    "⚖️ [ALL] All Applicable Railway Board Fine Rules & Clauses Combined",
+    "[ALL] All Applicable Railway Board Fine Rules & Clauses Combined",
     "Catering Hygiene & Quality Violation (RB Circular No. 12/2022) - Rs. 10,000/-",
     "Unauthorised Vending / Hawking inside Station/Train (Sec 144/147) - Rs. 5,000/-",
     "Platform Cleanliness & Waste Management Default (Swachh Rail Policy) - Rs. 25,000/-",
@@ -430,7 +437,7 @@ def create_pdf(station_name, insp_type, items_list, layout_mode):
             pdf.set_font("Arial", 'B', 17)
             pdf.set_text_color(255, 255, 255)
             pdf.set_xy(0, 3)
-            pdf.cell(0, 14, txt=f"COMMERCIAL INSPECTION REPORT : {station_name.upper()} [{insp_type}]", ln=1, align='C')
+            pdf.cell(0, 14, txt=clean_text_for_pdf(f"COMMERCIAL INSPECTION REPORT : {station_name.upper()} [{insp_type}]"), ln=1, align='C')
             
             with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp_b:
                 tmp_b.write(data['before'].getvalue())
@@ -449,7 +456,7 @@ def create_pdf(station_name, insp_type, items_list, layout_mode):
             pdf.set_font("Arial", 'B', 11)
             pdf.set_text_color(255, 255, 255)
             b_txt = "DEFICIENCY / BEFORE" + (f" [{data['d_before']} {data['t_before']}]" if data['show_dt'] else "")
-            pdf.cell(125, 9, txt=b_txt, ln=1, align='C')
+            pdf.cell(125, 9, txt=clean_text_for_pdf(b_txt), ln=1, align='C')
             
             pdf.set_line_width(0.8)
             pdf.set_draw_color(50, 50, 50)
@@ -461,7 +468,7 @@ def create_pdf(station_name, insp_type, items_list, layout_mode):
             pdf.set_font("Arial", 'B', 11)
             pdf.set_text_color(255, 255, 255)
             a_txt = f"RECTIFIED / AFTER (Score: {data['ai_score']}/10)" + (f" [{data['d_after']} {data['t_after']}]" if data['show_dt'] else "")
-            pdf.cell(125, 9, txt=a_txt, ln=1, align='C')
+            pdf.cell(125, 9, txt=clean_text_for_pdf(a_txt), ln=1, align='C')
             
             pdf.set_fill_color(225, 235, 245)
             pdf.set_draw_color(0, 51, 153)
@@ -470,18 +477,18 @@ def create_pdf(station_name, insp_type, items_list, layout_mode):
             pdf.set_xy(0, 132)
             pdf.set_font("Arial", 'B', 12)
             pdf.set_text_color(0, 51, 153)
-            pdf.cell(0, 9, txt=f"Micro-Location: {data['location']}", ln=1, align='C')
+            pdf.cell(0, 9, txt=clean_text_for_pdf(f"Micro-Location: {data['location']}"), ln=1, align='C')
 
             if data['remarks']:
                 pdf.set_xy(20, 144)
                 pdf.set_font("Arial", 'B', 10)
                 pdf.set_text_color(50, 50, 50)
-                pdf.cell(257, 6, txt=f"CCI Observations: {data['remarks']}", ln=1, align='L')
+                pdf.cell(257, 6, txt=clean_text_for_pdf(f"CCI Observations: {data['remarks']}"), ln=1, align='L')
             if data['fine']:
                 pdf.set_xy(20, 152)
                 pdf.set_font("Arial", 'B', 10)
                 pdf.set_text_color(180, 0, 0)
-                pdf.cell(257, 6, txt=f"Fine Rule / Penalty: {data['fine']}", ln=1, align='L')
+                pdf.cell(257, 6, txt=clean_text_for_pdf(f"Fine Rule / Penalty: {data['fine']}"), ln=1, align='L')
             
             pdf.set_xy(15, 192)
             pdf.set_font("Arial", 'I', 9)
@@ -501,7 +508,7 @@ def create_pdf(station_name, insp_type, items_list, layout_mode):
             pdf.set_font("Arial", 'B', 17)
             pdf.set_text_color(255, 255, 255)
             pdf.set_xy(0, 3)
-            pdf.cell(0, 14, txt=f"COMMERCIAL INSPECTION REPORT : {station_name.upper()} [{insp_type}]", ln=1, align='C')
+            pdf.cell(0, 14, txt=clean_text_for_pdf(f"COMMERCIAL INSPECTION REPORT : {station_name.upper()} [{insp_type}]"), ln=1, align='C')
             
             with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
                 tmp.write(data['img'].getvalue())
@@ -520,13 +527,13 @@ def create_pdf(station_name, insp_type, items_list, layout_mode):
             pdf.set_font("Arial", 'B', 11)
             pdf.set_text_color(0, 51, 153)
             dt_display = f" | Date/Time: {data['date_str']} {data['time_str']}" if data['show_dt'] else ""
-            pdf.cell(0, 8, txt=f"Micro-Location: {data['location']} | Status: {data['status'].upper()}{dt_display}", ln=1, align='C')
+            pdf.cell(0, 8, txt=clean_text_for_pdf(f"Micro-Location: {data['location']} | Status: {data['status'].upper()}{dt_display}"), ln=1, align='C')
 
             if data['remarks']:
                 pdf.set_xy(20, 148)
                 pdf.set_font("Arial", 'B', 10)
                 pdf.set_text_color(50, 50, 50)
-                pdf.cell(257, 6, txt=f"CCI Observations: {data['remarks']}", ln=1, align='L')
+                pdf.cell(257, 6, txt=clean_text_for_pdf(f"CCI Observations: {data['remarks']}"), ln=1, align='L')
             
             pdf.set_xy(15, 192)
             pdf.set_font("Arial", 'I', 9)
@@ -557,38 +564,38 @@ def create_noting_pdf(subject, recipient, content, photos_bytes_list, location_s
     pdf.set_xy(15, 25)
     pdf.set_font("Arial", 'B', 11)
     pdf.set_text_color(0, 51, 153)
-    pdf.cell(0, 6, txt=f"To: {recipient}", ln=1)
+    pdf.cell(0, 6, txt=clean_text_for_pdf(f"To: {recipient}"), ln=1)
     
     pdf.set_xy(15, 33)
     pdf.set_font("Arial", 'B', 11)
     pdf.set_text_color(50, 50, 50)
-    pdf.multi_cell(180, 6, txt=f"Subject: {subject}")
+    pdf.multi_cell(180, 6, txt=clean_text_for_pdf(f"Subject: {subject}"))
     
     current_y = pdf.get_y() + 4
     if location_str and location_str != "-- Select Commercial/Amenity Location --":
         pdf.set_xy(15, current_y)
         pdf.set_font("Arial", 'B', 10)
         pdf.set_text_color(0, 51, 153)
-        pdf.cell(180, 6, txt=f"Inspection Location / Area: {location_str}", ln=1)
+        pdf.cell(180, 6, txt=clean_text_for_pdf(f"Inspection Location / Area: {location_str}"), ln=1)
         current_y = pdf.get_y() + 2
         
     if fine_rule_str and fine_rule_str != "-- Select Railway Board Fine / Penalty Rule --":
         pdf.set_xy(15, current_y)
         pdf.set_font("Arial", 'B', 10)
         pdf.set_text_color(180, 0, 0)
-        pdf.multi_cell(180, 6, txt=f"Recommended Fine / Penalty Reference: {fine_rule_str}")
+        pdf.multi_cell(180, 6, txt=clean_text_for_pdf(f"Recommended Fine / Penalty Reference: {fine_rule_str}"))
         current_y = pdf.get_y() + 4
 
     pdf.set_xy(15, current_y)
     pdf.set_font("Arial", '', 10)
     pdf.set_text_color(20, 20, 20)
-    pdf.multi_cell(180, 6, txt=content)
+    pdf.multi_cell(180, 6, txt=clean_text_for_pdf(content))
     
     if photos_bytes_list:
         pdf.ln(5)
         pdf.set_font("Arial", 'B', 10)
         pdf.set_text_color(0, 51, 153)
-        pdf.cell(0, 6, txt=f"Attached Evidence Photos [Location: {location_str}]:", ln=1)
+        pdf.cell(0, 6, txt=clean_text_for_pdf(f"Attached Evidence Photos [Location: {location_str}]:"), ln=1)
         
         for p_bytes in photos_bytes_list:
             pdf.add_page()
@@ -647,7 +654,7 @@ def create_circular_directory_pdf(links_list):
     for idx, link in enumerate(links_list):
         full_link = link if link.startswith('http') else f"https://indianrailways.gov.in{link}"
         pdf.cell(15, 7, txt=str(idx+1), border=1, align='C')
-        pdf.cell(175, 7, txt=full_link, border=1)
+        pdf.cell(175, 7, txt=clean_text_for_pdf(full_link), border=1)
         pdf.ln()
         
     pdf.ln(15)
@@ -697,8 +704,8 @@ def create_dossier_pdf(records):
     for rec in records:
         insp_id, station, itype, insp_date, created_at = rec
         pdf.cell(15, 7, txt=str(insp_id), border=1, align='C')
-        pdf.cell(65, 7, txt=str(station), border=1)
-        pdf.cell(75, 7, txt=str(itype), border=1)
+        pdf.cell(65, 7, txt=clean_text_for_pdf(str(station)), border=1)
+        pdf.cell(75, 7, txt=clean_text_for_pdf(str(itype)), border=1)
         pdf.cell(45, 7, txt=str(insp_date), border=1, align='C')
         pdf.ln()
         
