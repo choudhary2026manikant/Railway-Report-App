@@ -5,3 +5,4 @@ Pillow
 pypdf
 qrcode
 google-generativeai
+python-dotenv
