@@ -11,9 +11,8 @@ import urllib.parse
 import qrcode
 import urllib.request
 import urllib.error
-from docx import Document
 import pypdf
-import openai
+import google.generativeai as genai
 
 st.set_page_config(page_title="Master Portal - CCI Manikant Choudhary (Solapur)", layout="wide")
 
@@ -162,7 +161,7 @@ with st.sidebar:
         "📊 Division Commercial Analytics", 
         "📈 Monthly Dossier & Performance",
         "🌐 Railway Board Circular Directory",
-        "🤖 ChatGPT & PDF Analyst",
+        "🤖 Gemini AI PDF Analyst",
         "📱 Portal QR Code"
     ])
     st.markdown("---")
@@ -593,34 +592,6 @@ def create_noting_pdf(subject, recipient, content, photos_bytes_list, location_s
         return bytes(raw_output)
     return raw_output
 
-def create_noting_docx(subject, recipient, content, photos_bytes_list, location_str):
-    doc = Document()
-    doc.add_heading('CENTRAL RAILWAY - SOLAPUR DIVISION', level=1)
-    doc.add_paragraph(f"To: {recipient}")
-    doc.add_paragraph(f"Subject: {subject}")
-    doc.add_paragraph(f"Location: {location_str}")
-    doc.add_paragraph("--------------------------------------------------")
-    doc.add_paragraph(content)
-    doc.add_paragraph("\n")
-    
-    if photos_bytes_list:
-        doc.add_heading('Attached Evidence Photos:', level=2)
-        for p_bytes in photos_bytes_list:
-            processed_io = process_image(p_bytes)
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp_d:
-                tmp_d.write(processed_io.getvalue())
-                path_d = tmp_d.name
-            doc.add_picture(path_d, width=Inches(5.5))
-            os.remove(path_d)
-            doc.add_paragraph("\n")
-            
-    doc.add_paragraph("\nSubmitted by:\nManikant Choudhary, CCI / Solapur\nSr. DCM Office, Central Railway")
-    
-    docx_io = io.BytesIO()
-    doc.save(docx_io)
-    docx_io.seek(0)
-    return docx_io.read()
-
 def create_circular_directory_pdf(links_list):
     pdf = FPDF('P', 'mm', 'A4')
     pdf.set_auto_page_break(True, margin=15)
@@ -948,7 +919,7 @@ if app_mode == "🔍 Master Field Inspection & Evidence":
 # ==================== APP MODE 2: NOTING & LETTER DRAFTING ====================
 elif app_mode == "📝 Official Noting & Fine Proposal":
     st.markdown("### 📝 Official Noting, Letter & Fine Proposal Drafting Module")
-    st.markdown("Office ke liye formal noting, letter aur penalty recommendation draft taiyar karein (साथ में **Bulk Evidentiary Photos** और PDF/Word download)।")
+    st.markdown("Office ke liye formal noting, letter aur penalty recommendation draft taiyar karein (साथ में **Bulk Evidentiary Photos** और PDF download)।")
     
     d_subject = st.text_input("Subject / Title:", placeholder="e.g. Proposal for imposing penalty on catering/cleaning agency at Solapur station under Railway Board guidelines.")
     d_recipient = st.text_input("Addressed To:", value="Sr. Divisional Commercial Manager (Sr. DCM), Central Railway, Solapur")
@@ -960,7 +931,7 @@ elif app_mode == "📝 Official Noting & Fine Proposal":
     
     d_photos = st.file_uploader("📂 Upload Supporting Evidence Photos (Multiple photos allowed):", type=['jpg', 'jpeg', 'png'], accept_multiple_files=True, key="noting_bulk_photos")
     
-    if st.button("🚀 Generate Official Noting (PDF & Word)", type="primary"):
+    if st.button("🚀 Generate Official Noting (PDF)", type="primary"):
         if d_subject:
             save_letter_to_db(d_subject, d_recipient, d_content)
             loc_str = d_loc if d_loc != "-- Select Commercial/Amenity Location --" else "Solapur Division Area"
@@ -968,30 +939,20 @@ elif app_mode == "📝 Official Noting & Fine Proposal":
             photos_bytes_list = [p.getvalue() for p in d_photos] if d_photos else []
             
             st.session_state['noting_pdf'] = create_noting_pdf(d_subject, d_recipient, d_content, photos_bytes_list, loc_str)
-            st.session_state['noting_docx'] = create_noting_docx(d_subject, d_recipient, d_content, photos_bytes_list, loc_str)
             st.session_state['noting_ready'] = True
-            st.success("✅ Official Noting generated successfully in both PDF and Word formats!")
+            st.success("✅ Official Noting generated successfully in PDF format!")
         else:
             st.warning("⚠️ Please enter Subject / Title before generating!")
 
     if st.session_state.get('noting_ready'):
         st.markdown("---")
         st.markdown("#### 📥 Download Generated Files:")
-        col_n1, col_n2 = st.columns(2)
-        with col_n1:
-            st.download_button(
-                label="📥 Download Noting PDF",
-                data=st.session_state['noting_pdf'],
-                file_name=f"CCI_Noting_{datetime.now().strftime('%H%M%S')}.pdf",
-                mime="application/pdf"
-            )
-        with col_n2:
-            st.download_button(
-                label="📄 Download Noting Word (.docx)",
-                data=st.session_state['noting_docx'],
-                file_name=f"CCI_Noting_{datetime.now().strftime('%H%M%S')}.docx",
-                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-            )
+        st.download_button(
+            label="📥 Download Noting PDF",
+            data=st.session_state['noting_pdf'],
+            file_name=f"CCI_Noting_{datetime.now().strftime('%H%M%S')}.pdf",
+            mime="application/pdf"
+        )
 
     st.markdown("---")
     st.markdown("#### 📂 Saved Drafts & Proposals")
@@ -1130,16 +1091,16 @@ elif app_mode == "🌐 Railway Board Circular Directory":
         full_link = link if link.startswith('http') else f"https://indianrailways.gov.in{link}"
         st.markdown(f"- [{full_link}]({full_link})")
 
-# ==================== APP MODE 7: CHATGPT & PDF ANALYST ====================
-elif app_mode == "🤖 ChatGPT & PDF Analyst":
-    st.markdown("### 🤖 ChatGPT (OpenAI) - Railway Circular & PDF Analyst")
-    st.markdown("किसी भी रेलवे बोर्ड सर्कुलर या पीडीएफ दस्तावेज़ को अपलोड करें। OpenAI (ChatGPT) सीधे पीडीएफ के टेक्स्ट को पढ़कर उसका सटीक सारांश **हिंदी (देवनागरी लिपि)** और **अंग्रेजी** में समझाएगा।")
+# ==================== APP MODE 7: GEMINI AI PDF ANALYST ====================
+elif app_mode == "🤖 Gemini AI PDF Analyst":
+    st.markdown("### 🤖 Gemini AI - Railway Circular & PDF Analyst")
+    st.markdown("किसी भी रेलवे बोर्ड सर्कुलर या पीडीएफ दस्तावेज़ को अपलोड करें। जेमिनी एआई सीधे आपके द्वारा अपलोड किए गए पीडीएफ के वास्तविक टेक्स्ट को पढ़कर उसका सटीक सारांश **हिंदी (देवनागरी लिपि)** और **अंग्रेजी** में दिखाएगा।")
     
-    openai_api_key = st.text_input("🔑 Enter OpenAI API Key:", type="password", value="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", key="openai_key_input")
-    uploaded_pdf = st.file_uploader("📂 Upload Railway Circular / PDF Document:", type=['pdf'], key="chatgpt_pdf_uploader")
+    gemini_key_input = st.text_input("🔑 Enter Google Gemini API Key (Optional):", type="password", key="gem_key_input")
+    uploaded_pdf = st.file_uploader("📂 Upload Railway Circular / PDF Document:", type=['pdf'], key="gemini_pdf_uploader")
     
     if uploaded_pdf:
-        with st.spinner("🤖 PDF दस्तावेज़ के टेक्स्ट को निकाला जा रहा है..."):
+        with st.spinner("🤖 PDF दस्तावेज़ के वास्तविक टेक्स्ट को पढ़ा जा रहा है..."):
             try:
                 pdf_reader = pypdf.PdfReader(uploaded_pdf)
                 extracted_text = ""
@@ -1151,61 +1112,50 @@ elif app_mode == "🤖 ChatGPT & PDF Analyst":
                 if not extracted_text.strip():
                     extracted_text = "Railway Board Commercial Directorate Guidelines regarding station cleanliness, ticket checking, parcel management, and penalty imposition."
                 
-                hindi_summary = ""
-                english_summary = ""
+                analysis_hi = ""
+                analysis_en = ""
                 
-                if openai_api_key:
-                    with st.spinner("🤖 ChatGPT (OpenAI) is analyzing the PDF content..."):
-                        try:
-                            client = openai.OpenAI(api_key=openai_api_key)
-                            
-                            # Hindi Request
-                            response_hi = client.chat.completions.create(
-                                model="gpt-3.5-turbo",
-                                messages=[
-                                    {"role": "system", "content": "You are an expert railway commercial analyst. Analyze the provided text and write a comprehensive executive summary in Devanagari Hindi script."},
-                                    {"role": "user", "content": extracted_text[:4000]}
-                                ]
-                            )
-                            hindi_summary = response_hi.choices[0].message.content
-                            
-                            # English Request
-                            response_en = client.chat.completions.create(
-                                model="gpt-3.5-turbo",
-                                messages=[
-                                    {"role": "system", "content": "You are an expert railway commercial analyst. Analyze the provided text and write a professional executive summary in English."},
-                                    {"role": "user", "content": extracted_text[:4000]}
-                                ]
-                            )
-                            english_summary = response_en.choices[0].message.content
-                        except Exception as api_err:
-                            hindi_summary = f"API Error: {api_err}. Please check your OpenAI API key."
-                            english_summary = f"API Error: {api_err}."
-                else:
-                    hindi_summary = "⚠️ Please enter your OpenAI API key above to get AI analysis."
-                    english_summary = "⚠️ Please enter your OpenAI API key above to get AI analysis."
+                if gemini_key_input:
+                    try:
+                        genai.configure(api_key=gemini_key_input)
+                        model = genai.GenerativeModel('gemini-1.5-flash')
+                        
+                        prompt_hi = f"Analyze the following railway document text and provide a structured professional summary in Devanagari Hindi script:\n\n{extracted_text[:4000]}"
+                        res_hi = model.generate_content(prompt_hi)
+                        analysis_hi = res_hi.text
+                        
+                        prompt_en = f"Analyze the following railway document text and provide a structured professional summary in English:\n\n{extracted_text[:4000]}"
+                        res_en = model.generate_content(prompt_en)
+                        analysis_en = res_en.text
+                    except Exception as g_err:
+                        analysis_hi = f"API Error: {g_err}. Showing extracted raw text below."
+                        analysis_en = f"API Error: {g_err}. Showing extracted raw text below."
+                
+                if not analysis_hi:
+                    analysis_hi = f"<b>अपलोड किए गए पीडीएफ (PDF) की वास्तविक सामग्री:</b><br><br>{extracted_text[:1500].replace(chr(10), '<br>')}"
+                    analysis_en = f"<b>Extracted PDF Content Preview:</b><br><br>{extracted_text[:1500].replace(chr(10), '<br>')}"
 
-                st.success("✅ विश्लेषण पूर्ण हुआ!")
+                st.success("✅ पीडीएफ का विश्लेषण पूर्ण हुआ!")
                 
                 tab_hi, tab_en, tab_raw = st.tabs(["🇮🇳 हिंदी विश्लेषण (Devanagari)", "🇬🇧 English Analysis", "📄 Extracted Raw Text"])
                 
                 with tab_hi:
-                    st.markdown("#### 🇮🇳 ChatGPT - हिंदी सारांश (Devanagari Script)")
+                    st.markdown("#### 🇮🇳 हिंदी सारांश (Devanagari Script)")
                     st.markdown(
                         f"""
                         <div style="background-color: #f8f9fa; border-left: 5px solid #003399; padding: 20px; border-radius: 8px;">
-                            <p style="font-size: 16px; line-height: 1.8;">{hindi_summary.replace(chr(10), '<br>')}</p>
+                            <p style="font-size: 16px; line-height: 1.8;">{analysis_hi.replace(chr(10), '<br>')}</p>
                         </div>
                         """,
                         unsafe_allow_html=True
                     )
                 
                 with tab_en:
-                    st.markdown("#### 🇬🇧 ChatGPT - English Analysis")
+                    st.markdown("#### 🇬🇧 English Analysis & Summary")
                     st.markdown(
                         f"""
                         <div style="background-color: #f8f9fa; border-left: 5px solid #28a745; padding: 20px; border-radius: 8px;">
-                            <p style="font-size: 16px; line-height: 1.6;">{english_summary.replace(chr(10), '<br>')}</p>
+                            <p style="font-size: 16px; line-height: 1.6;">{analysis_en.replace(chr(10), '<br>')}</p>
                         </div>
                         """,
                         unsafe_allow_html=True
