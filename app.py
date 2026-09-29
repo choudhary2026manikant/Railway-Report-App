@@ -1,3 +1,8 @@
+import os
+from dotenv import load_dotenv
+load_dotenv()
+SECURE_PASSWORD = os.getenv("PORTAL_PASSWORD", "Railway@2026")
+GEMINI_DEFAULT_KEY = os.getenv("GEMINI_API_KEY", "")
 import streamlit as st
 import io, zipfile, re, urllib.parse, urllib.request, urllib.error
 import pypdf
