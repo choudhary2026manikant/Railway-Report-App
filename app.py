@@ -710,10 +710,10 @@ if app_mode == "🔍 Master Field Inspection & Evidence":
         ], key='inspection_type_field')
 
     st.markdown("---")
-    st.markdown("### 📂 2. Choose Assembly Mode & Bulk Upload Photos")
+    st.markdown("### 📂 2. Choose Assembly Mode & Bulk Upload Photos / ZIP")
     layout_mode = st.radio("Select Report Layout Style:", ["Before & After Pairs (Comparison)", "Individual / Single Photos (Flexible Evidence)"], key='layout_mode_field')
     
-    uploaded_files = st.file_uploader("Upload Bulk Evidentiary Photos (Select multiple JPG/PNG/ZIP files at once):", type=['zip', 'jpg', 'jpeg', 'png'], accept_multiple_files=True, key='bulk_uploader')
+    uploaded_files = st.file_uploader("Upload Bulk Evidentiary Photos or ZIP file (Select multiple JPG/PNG/ZIP):", type=['zip', 'jpg', 'jpeg', 'png'], accept_multiple_files=True, key='bulk_uploader')
 
     if uploaded_files:
         image_files = []
@@ -898,7 +898,7 @@ if app_mode == "🔍 Master Field Inspection & Evidence":
         col_ppt, col_pdf = st.columns(2)
         with col_ppt:
             st.download_button(
-                label="⬇️ Download PowerPoint Report (.pptx)", 
+                label="⬇️️ Download PowerPoint Report (.pptx)", 
                 data=st.session_state['ppt_data'], 
                 file_name=f"CCI_{st_display_name}_Report_{current_time_str}.pptx",
                 mime="application/vnd.openxmlformats-officedocument.presentationml.presentation"
@@ -919,7 +919,7 @@ if app_mode == "🔍 Master Field Inspection & Evidence":
 # ==================== APP MODE 2: NOTING & LETTER DRAFTING ====================
 elif app_mode == "📝 Official Noting & Fine Proposal":
     st.markdown("### 📝 Official Noting, Letter & Fine Proposal Drafting Module")
-    st.markdown("Office ke liye formal noting, letter aur penalty recommendation draft taiyar karein (साथ में **Bulk Evidentiary Photos** और PDF download)।")
+    st.markdown("Office ke liye formal noting, letter aur penalty recommendation draft taiyar karein (साथ में **Bulk Photos या ZIP** और PDF download)।")
     
     d_subject = st.text_input("Subject / Title:", placeholder="e.g. Proposal for imposing penalty on catering/cleaning agency at Solapur station under Railway Board guidelines.")
     d_recipient = st.text_input("Addressed To:", value="Sr. Divisional Commercial Manager (Sr. DCM), Central Railway, Solapur")
@@ -929,16 +929,26 @@ elif app_mode == "📝 Official Noting & Fine Proposal":
     d_loc = st.selectbox("Select Evidence Location:", LOCATION_OPTIONS, key="noting_loc")
     d_fine_rule = st.selectbox("Select Railway Board Fine Rule:", FINE_PRESETS, key="noting_fine_rule")
     
-    d_photos = st.file_uploader("📂 Upload Supporting Evidence Photos (Multiple photos allowed):", type=['jpg', 'jpeg', 'png'], accept_multiple_files=True, key="noting_bulk_photos")
+    d_photos_raw = st.file_uploader("📂 Upload Supporting Evidence Photos or ZIP file (Multiple photos or ZIP allowed):", type=['zip', 'jpg', 'jpeg', 'png'], accept_multiple_files=True, key="noting_bulk_photos")
     
+    # Process ZIP or multiple files for noting
+    d_photos_bytes_list = []
+    if d_photos_raw:
+        for uf in d_photos_raw:
+            if uf.name.lower().endswith('.zip'):
+                with zipfile.ZipFile(uf, 'r') as zf:
+                    for zinfo in zf.infolist():
+                        if zinfo.filename.lower().endswith(('.png', '.jpg', '.jpeg')) and not zinfo.filename.startswith('__MACOSX'):
+                            d_photos_bytes_list.append(zf.read(zinfo.filename))
+            else:
+                d_photos_bytes_list.append(uf.getvalue())
+
     if st.button("🚀 Generate Official Noting (PDF)", type="primary"):
         if d_subject:
             save_letter_to_db(d_subject, d_recipient, d_content)
             loc_str = d_loc if d_loc != "-- Select Commercial/Amenity Location --" else "Solapur Division Area"
             
-            photos_bytes_list = [p.getvalue() for p in d_photos] if d_photos else []
-            
-            st.session_state['noting_pdf'] = create_noting_pdf(d_subject, d_recipient, d_content, photos_bytes_list, loc_str)
+            st.session_state['noting_pdf'] = create_noting_pdf(d_subject, d_recipient, d_content, d_photos_bytes_list, loc_str)
             st.session_state['noting_ready'] = True
             st.success("✅ Official Noting generated successfully in PDF format!")
         else:
@@ -1093,21 +1103,33 @@ elif app_mode == "🌐 Railway Board Circular Directory":
 
 # ==================== APP MODE 7: GEMINI AI PDF ANALYST ====================
 elif app_mode == "🤖 Gemini AI PDF Analyst":
-    st.markdown("### 🤖 Gemini AI - Railway Circular & PDF Analyst")
-    st.markdown("किसी भी रेलवे बोर्ड सर्कुलर या पीडीएफ दस्तावेज़ को अपलोड करें। जेमिनी एआई सीधे आपके द्वारा अपलोड किए गए पीडीएफ के वास्तविक टेक्स्ट को पढ़कर उसका सटीक सारांश **हिंदी (देवनागरी लिपि)** और **अंग्रेजी** में दिखाएगा।")
+    st.markdown("### 🤖 Gemini AI - Railway Circular & PDF / ZIP Analyst")
+    st.markdown("किसी भी रेलवे बोर्ड सर्कुलर, पीडीएफ दस्तावेज़ या **PDFs की ZIP file** को अपलोड करें। जेमिनी एआई सीधे टेक्स्ट को पढ़कर उसका सटीक सारांश **हिंदी (देवनागरी लिपि)** और **अंग्रेजी** में दिखाएगा।")
     
     gemini_key_input = st.text_input("🔑 Enter Google Gemini API Key (Optional):", type="password", key="gem_key_input")
-    uploaded_pdf = st.file_uploader("📂 Upload Railway Circular / PDF Document:", type=['pdf'], key="gemini_pdf_uploader")
+    uploaded_pdf_raw = st.file_uploader("📂 Upload Railway Circular (PDF or ZIP containing PDFs):", type=['pdf', 'zip'], key="gemini_pdf_uploader")
     
-    if uploaded_pdf:
-        with st.spinner("🤖 PDF दस्तावेज़ के वास्तविक टेक्स्ट को पढ़ा जा रहा है..."):
+    # Handle ZIP or PDF upload for AI Analyst
+    extracted_text = ""
+    if uploaded_pdf_raw:
+        with st.spinner("🤖 दस्तावेज़ के वास्तविक टेक्स्ट को पढ़ा जा रहा है..."):
             try:
-                pdf_reader = pypdf.PdfReader(uploaded_pdf)
-                extracted_text = ""
-                for page in pdf_reader.pages:
-                    text = page.extract_text()
-                    if text:
-                        extracted_text += text + "\n"
+                if uploaded_pdf_raw.name.lower().endswith('.zip'):
+                    with zipfile.ZipFile(uploaded_pdf_raw, 'r') as zf:
+                        for zinfo in zf.infolist():
+                            if zinfo.filename.lower().endswith('.pdf') and not zinfo.filename.startswith('__MACOSX'):
+                                pdf_data = io.BytesIO(zf.read(zinfo.filename))
+                                reader = pypdf.PdfReader(pdf_data)
+                                for page in reader.pages:
+                                    t = page.extract_text()
+                                    if t:
+                                        extracted_text += t + "\n"
+                else:
+                    reader = pypdf.PdfReader(uploaded_pdf_raw)
+                    for page in reader.pages:
+                        t = page.extract_text()
+                        if t:
+                            extracted_text += t + "\n"
                 
                 if not extracted_text.strip():
                     extracted_text = "Railway Board Commercial Directorate Guidelines regarding station cleanliness, ticket checking, parcel management, and penalty imposition."
@@ -1132,10 +1154,10 @@ elif app_mode == "🤖 Gemini AI PDF Analyst":
                         analysis_en = f"API Error: {g_err}. Showing extracted raw text below."
                 
                 if not analysis_hi:
-                    analysis_hi = f"<b>अपलोड किए गए पीडीएफ (PDF) की वास्तविक सामग्री:</b><br><br>{extracted_text[:1500].replace(chr(10), '<br>')}"
-                    analysis_en = f"<b>Extracted PDF Content Preview:</b><br><br>{extracted_text[:1500].replace(chr(10), '<br>')}"
+                    analysis_hi = f"<b>अपलोड किए गए दस्तावेज़ (PDF/ZIP) की वास्तविक सामग्री:</b><br><br>{extracted_text[:1500].replace(chr(10), '<br>')}"
+                    analysis_en = f"<b>Extracted Document Content Preview:</b><br><br>{extracted_text[:1500].replace(chr(10), '<br>')}"
 
-                st.success("✅ पीडीएफ का विश्लेषण पूर्ण हुआ!")
+                st.success("✅ दस्तावेज़ का विश्लेषण पूर्ण हुआ!")
                 
                 tab_hi, tab_en, tab_raw = st.tabs(["🇮🇳 हिंदी विश्लेषण (Devanagari)", "🇬🇧 English Analysis", "📄 Extracted Raw Text"])
                 
@@ -1162,11 +1184,11 @@ elif app_mode == "🤖 Gemini AI PDF Analyst":
                     )
 
                 with tab_raw:
-                    st.markdown("#### 📄 Original Extracted Text from PDF:")
+                    st.markdown("#### 📄 Original Extracted Text from Document:")
                     st.text_area("Raw Text View", value=extracted_text, height=300)
 
             except Exception as e:
-                st.error(f"⚠️ Error reading PDF file: {e}")
+                st.error(f"⚠️ Error reading file: {e}")
 
 # ==================== APP MODE 8: PORTAL QR CODE ====================
 elif app_mode == "📱 Portal QR Code":
