@@ -188,18 +188,24 @@ RAW_LOCATIONS = [
     "Passenger Amenities - Waiting Hall (Upper Class / General)", "Passenger Amenities - FOB & Staircase",
     "Catering - Static Stall / Food Plaza / Fast Food Unit", "Catering - Pantry Car / Train On-Board Vending",
     "Parcel Office & Loading Wharf", "Goods Shed & Siding Track Area", "Platform Cleanliness & Track Apron",
-    "Pay & Use Toilet & Urinals Area", "Circulating Area & Parking Zone", "Retiring Rooms & Dormitory"
+    "Pay & Use Toilet & Urinals Area", "Circulating Area & Parking Zone", "Retiring Rooms & Dormitory",
+    "Foot Over Bridge (FOB) & Escalators / Lifts", "Train Engine & Coach Vestibule Area", "Station Master Office & Control Room"
 ]
 RAW_LOCATIONS.sort()
 LOCATION_OPTIONS = ["-- Select Commercial/Amenity Location --"] + RAW_LOCATIONS
 
 FINE_PRESETS = [
     "-- Select Railway Board Fine / Penalty Rule --",
-    "Catering Hygiene Violation (RB Circular No. 12/2022) - Rs. 10,000/-",
-    "Unauthorised Vending / Hawking (Sec 144/147) - Rs. 5,000/-",
-    "Platform Cleanliness Default (Swachh Rail Policy) - Rs. 25,000/-",
-    "Ticketless Travel / Irregular Ticketing Counter - Rs. 2,000/-",
-    "Parcel Overloading / Wharfage Violation - Rs. 10,000/-"
+    "Catering Hygiene & Quality Violation (RB Circular No. 12/2022) - Rs. 10,000/-",
+    "Unauthorised Vending / Hawking inside Station/Train (Sec 144/147) - Rs. 5,000/-",
+    "Platform Cleanliness & Waste Management Default (Swachh Rail Policy) - Rs. 25,000/-",
+    "Ticketless Travel & Irregular Ticketing Counter Default - Rs. 2,000/-",
+    "Parcel Overloading & Wharfage / Demurrage Violation - Rs. 10,000/-",
+    "OBHS (On Board Housekeeping Services) Deficiency - Rs. 15,000/-",
+    "Bedroll / Linen Quality & Washing Default in AC Coaches - Rs. 5,000/-",
+    "Failure to Display Rate List / Rate Board at Catering Stall - Rs. 3,000/-",
+    "Vending of Unapproved / Unauthorised Brands of Water/Items - Rs. 10,000/-",
+    "Parking Contractor Overcharging / Space Encroachment Violation - Rs. 10,000/-"
 ]
 
 # ==================== IMAGE PROCESSING & EXIF ====================
@@ -535,7 +541,7 @@ def create_pdf(station_name, insp_type, items_list, layout_mode):
         return bytes(raw_output)
     return raw_output
 
-def create_noting_pdf(subject, recipient, content, photos_bytes_list, location_str):
+def create_noting_pdf(subject, recipient, content, photos_bytes_list, location_str, fine_rule_str=""):
     pdf = FPDF('P', 'mm', 'A4')
     pdf.set_auto_page_break(True, margin=15)
     pdf.add_page()
@@ -557,7 +563,22 @@ def create_noting_pdf(subject, recipient, content, photos_bytes_list, location_s
     pdf.set_text_color(50, 50, 50)
     pdf.multi_cell(180, 6, txt=f"Subject: {subject}")
     
-    pdf.set_xy(15, pdf.get_y() + 4)
+    current_y = pdf.get_y() + 4
+    if location_str and location_str != "-- Select Commercial/Amenity Location --":
+        pdf.set_xy(15, current_y)
+        pdf.set_font("Arial", 'B', 10)
+        pdf.set_text_color(0, 51, 153)
+        pdf.cell(180, 6, txt=f"Inspection Location / Area: {location_str}", ln=1)
+        current_y = pdf.get_y() + 2
+        
+    if fine_rule_str and fine_rule_str != "-- Select Railway Board Fine / Penalty Rule --":
+        pdf.set_xy(15, current_y)
+        pdf.set_font("Arial", 'B', 10)
+        pdf.set_text_color(180, 0, 0)
+        pdf.multi_cell(180, 6, txt=f"Recommended Fine / Penalty Reference: {fine_rule_str}")
+        current_y = pdf.get_y() + 4
+
+    pdf.set_xy(15, current_y)
     pdf.set_font("Arial", '', 10)
     pdf.set_text_color(20, 20, 20)
     pdf.multi_cell(180, 6, txt=content)
@@ -898,7 +919,7 @@ if app_mode == "🔍 Master Field Inspection & Evidence":
         col_ppt, col_pdf = st.columns(2)
         with col_ppt:
             st.download_button(
-                label="⬇️️ Download PowerPoint Report (.pptx)", 
+                label="⬇️ Download PowerPoint Report (.pptx)", 
                 data=st.session_state['ppt_data'], 
                 file_name=f"CCI_{st_display_name}_Report_{current_time_str}.pptx",
                 mime="application/vnd.openxmlformats-officedocument.presentationml.presentation"
@@ -931,7 +952,6 @@ elif app_mode == "📝 Official Noting & Fine Proposal":
     
     d_photos_raw = st.file_uploader("📂 Upload Supporting Evidence Photos or ZIP file (Multiple photos or ZIP allowed):", type=['zip', 'jpg', 'jpeg', 'png'], accept_multiple_files=True, key="noting_bulk_photos")
     
-    # Process ZIP or multiple files for noting
     d_photos_bytes_list = []
     if d_photos_raw:
         for uf in d_photos_raw:
@@ -947,8 +967,9 @@ elif app_mode == "📝 Official Noting & Fine Proposal":
         if d_subject:
             save_letter_to_db(d_subject, d_recipient, d_content)
             loc_str = d_loc if d_loc != "-- Select Commercial/Amenity Location --" else "Solapur Division Area"
+            fine_str = d_fine_rule if d_fine_rule != "-- Select Railway Board Fine / Penalty Rule --" else ""
             
-            st.session_state['noting_pdf'] = create_noting_pdf(d_subject, d_recipient, d_content, d_photos_bytes_list, loc_str)
+            st.session_state['noting_pdf'] = create_noting_pdf(d_subject, d_recipient, d_content, d_photos_bytes_list, loc_str, fine_str)
             st.session_state['noting_ready'] = True
             st.success("✅ Official Noting generated successfully in PDF format!")
         else:
@@ -1109,7 +1130,6 @@ elif app_mode == "🤖 Gemini AI PDF Analyst":
     gemini_key_input = st.text_input("🔑 Enter Google Gemini API Key (Optional):", type="password", key="gem_key_input")
     uploaded_pdf_raw = st.file_uploader("📂 Upload Railway Circular (PDF or ZIP containing PDFs):", type=['pdf', 'zip'], key="gemini_pdf_uploader")
     
-    # Handle ZIP or PDF upload for AI Analyst
     extracted_text = ""
     if uploaded_pdf_raw:
         with st.spinner("🤖 दस्तावेज़ के वास्तविक टेक्स्ट को पढ़ा जा रहा है..."):
