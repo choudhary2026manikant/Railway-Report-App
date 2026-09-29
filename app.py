@@ -6,10 +6,8 @@ from datetime import datetime
 import os
 from dotenv import load_dotenv
 
-# Load environment variables
 load_dotenv()
 
-# Import modular files
 from database import init_db, verify_user_login, save_inspection_to_db, get_all_inspections, delete_inspection_from_db, save_letter_to_db, get_all_letters
 from utils import process_image, get_image_info, create_pdf, create_noting_pdf
 
@@ -163,17 +161,51 @@ if app_mode == "🔍 Master Field Inspection & Evidence":
             st.success("Report generation pipeline ready!")
 
 elif app_mode == "📝 Official Noting & Fine Proposal":
-    st.markdown("### 📝 Official Noting & Fine Proposal Module")
-    d_subject = st.text_input("Subject / Title:")
-    d_recipient = st.text_input("Addressed To:", value="Sr. Divisional Commercial Manager (Sr. DCM), Solapur")
-    d_content = st.text_area("Drafting Body:", value="Respected Sir,\n\nSubmitted for kind perusal and necessary orders please.")
+    st.markdown("### 📝 Official Noting, Letter & Fine Proposal Module")
+    st.markdown("Office ke liye formal noting, letter aur penalty recommendation draft taiyar karein (साथ में **Bulk Photos या ZIP** aur PDF download).")
     
-    if st.button("🚀 Generate Noting PDF", type="primary"):
+    d_subject = st.text_input("Subject / Title:", placeholder="e.g. Proposal for imposing penalty on catering/cleaning agency at Solapur station under Railway Board guidelines.")
+    d_recipient = st.text_input("Addressed To:", value="Sr. Divisional Commercial Manager (Sr. DCM), Central Railway, Solapur")
+    d_content = st.text_area("Drafting Body (Noting / Proposal text):", height=200, value="Respected Sir,\n\nIn reference to the field inspection conducted by the undersigned at Solapur division covering ticketing/catering/amenities, certain commercial deficiencies and discrepancies were observed as per photographic evidences.\n\nIn view of the guidelines issued by the Railway Board Commercial Directorate, imposing a penalty / fine of Rs. [...] is strongly recommended against the defaulting agency/contractor.\n\nSubmitted for kind perusal and necessary orders please.")
+    
+    st.markdown("---")
+    d_loc = st.selectbox("Select Evidence Location:", LOCATION_OPTIONS, key="noting_loc")
+    d_fine_rule = st.selectbox("Select Railway Board Fine Rule:", FINE_PRESETS, key="noting_fine_rule")
+    
+    d_photos_raw = st.file_uploader("📂 Upload Supporting Evidence Photos or ZIP file (Multiple photos or ZIP allowed):", type=['zip', 'jpg', 'jpeg', 'png'], accept_multiple_files=True, key="noting_bulk_photos")
+    
+    d_photos_bytes_list = []
+    if d_photos_raw:
+        for uf in d_photos_raw:
+            if uf.name.lower().endswith('.zip'):
+                with zipfile.ZipFile(uf, 'r') as zf:
+                    for zinfo in zf.infolist():
+                        if zinfo.filename.lower().endswith(('.png', '.jpg', '.jpeg')) and not zinfo.filename.startswith('__MACOSX'):
+                            d_photos_bytes_list.append(zf.read(zinfo.filename))
+            else:
+                d_photos_bytes_list.append(uf.getvalue())
+
+    if st.button("🚀 Generate Official Noting (PDF)", type="primary"):
         if d_subject:
-            pdf_bytes = create_noting_pdf(d_subject, d_recipient, d_content, [], "Solapur")
-            st.download_button("📥 Download Noting PDF", data=pdf_bytes, file_name="Noting.pdf", mime="application/pdf")
+            save_letter_to_db(d_subject, d_recipient, d_content)
+            loc_str = d_loc if d_loc != "-- Select Commercial/Amenity Location --" else "Solapur Division Area (All Locations)"
+            fine_str = d_fine_rule if d_fine_rule != "-- Select Railway Board Fine / Penalty Rule --" else ""
+            
+            st.session_state['noting_pdf'] = create_noting_pdf(d_subject, d_recipient, d_content, d_photos_bytes_list, loc_str, fine_str)
+            st.session_state['noting_ready'] = True
+            st.success("✅ Official Noting generated successfully in PDF format!")
         else:
-            st.warning("Please enter Subject.")
+            st.warning("⚠️ Please enter Subject / Title before generating!")
+
+    if st.session_state.get('noting_ready'):
+        st.markdown("---")
+        st.markdown("#### 📥 Download Generated Files:")
+        st.download_button(
+            label="📥 Download Noting PDF",
+            data=st.session_state['noting_pdf'],
+            file_name=f"CCI_Noting_{datetime.now().strftime('%H%M%S')}.pdf",
+            mime="application/pdf"
+        )
 
 elif app_mode == "📁 Inspection History (30 Days)":
     st.markdown("### 🗂️ Inspection History")
